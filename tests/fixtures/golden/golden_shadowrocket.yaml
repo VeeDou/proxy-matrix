@@ -1,0 +1,62 @@
+# managed-by-proxy-matrix - Shadowrocket Node Subscription
+proxies:
+  -
+    name: "[主力机场] 🇭🇰 香港 BGP 01"
+    type: "ss"
+    server: "192.0.2.10"
+    port: 8388
+    cipher: "aes-128-gcm"
+    password: "sample-password"
+    udp: true
+  -
+    name: "[主力机场] 🇯🇵 东京 CN2 01"
+    type: "vmess"
+    server: "192.0.2.11"
+    port: 443
+    uuid: "a0000000-0000-0000-0000-000000000001"
+    alterId: 0
+    cipher: "auto"
+    tls: true
+  -
+    name: "[主力机场] 🇺🇸 洛杉矶 01"
+    type: "trojan"
+    server: "192.0.2.12"
+    port: 443
+    password: "sample-password"
+    sni: "us-01.example.com"
+  -
+    name: "[主力机场] 🇸🇬 新加坡 01"
+    type: "hysteria2"
+    server: "192.0.2.13"
+    port: 443
+    password: "sample-password"
+  -
+    name: "[备用机场] 🇭🇰 香港 BGP 01"
+    type: "ss"
+    server: "192.0.2.10"
+    port: 8388
+    cipher: "aes-128-gcm"
+    password: "sample-password"
+    udp: true
+  -
+    name: "[备用机场] 🇯🇵 东京 CN2 01"
+    type: "vmess"
+    server: "192.0.2.11"
+    port: 443
+    uuid: "a0000000-0000-0000-0000-000000000001"
+    alterId: 0
+    cipher: "auto"
+    tls: true
+  -
+    name: "[备用机场] 🇺🇸 洛杉矶 01"
+    type: "trojan"
+    server: "192.0.2.12"
+    port: 443
+    password: "sample-password"
+    sni: "us-01.example.com"
+  -
+    name: "[备用机场] 🇸🇬 新加坡 01"
+    type: "hysteria2"
+    server: "192.0.2.13"
+    port: 443
+    password: "sample-password"

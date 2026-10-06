@@ -1,0 +1,378 @@
+# proxy-matrix-managed: v1
+# managed-by-proxy-matrix
+mode: "rule"
+ipv6: false
+"log-level": "info"
+"tcp-concurrent": true
+profile:
+  "store-selected": true
+  "store-fake-ip": true
+dns:
+  enable: true
+  ipv6: false
+  "default-nameserver":
+    - "223.5.5.5"
+    - "119.29.29.29"
+  "enhanced-mode": "fake-ip"
+  "fake-ip-range": "198.18.0.1/16"
+  "use-hosts": true
+  nameserver:
+    - "https://dns.alidns.com/dns-query"
+    - "https://doh.pub/dns-query"
+  fallback:
+    - "https://dns.cloudflare.com/dns-query"
+    - "https://dns.google/dns-query"
+  "fallback-filter":
+    geoip: true
+    "geoip-code": "CN"
+    ipcidr:
+      - "240.0.0.0/4"
+  "nameserver-policy":
+    "+.google.com": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.googleapis.com": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.googleapis.cn": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.googlevideo.com": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.gstatic.com": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.gmail.com": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.googlemail.com": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.youtube.com": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.youtu.be": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.ytimg.com": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.ggpht.com": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.google": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.goog": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.google.dev": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.googleusercontent.com": "https://1.1.1.1/dns-query#🌐 谷歌服务"
+    "+.openai.com": "https://dns.cloudflare.com/dns-query#🤖 AI 服务"
+    "+.chatgpt.com": "https://dns.cloudflare.com/dns-query#🤖 AI 服务"
+    "+.oaistatic.com": "https://dns.cloudflare.com/dns-query#🤖 AI 服务"
+    "+.oaiusercontent.com": "https://dns.cloudflare.com/dns-query#🤖 AI 服务"
+    "+.anthropic.com": "https://dns.cloudflare.com/dns-query#🤖 AI 服务"
+    "+.claude.ai": "https://dns.cloudflare.com/dns-query#🤖 AI 服务"
+    "+.perplexity.ai": "https://dns.cloudflare.com/dns-query#🤖 AI 服务"
+    "+.x.ai": "https://dns.cloudflare.com/dns-query#🤖 AI 服务"
+    "+.facebook.com": "https://dns.cloudflare.com/dns-query"
+    "+.twitter.com": "https://dns.cloudflare.com/dns-query"
+    "+.x.com": "https://dns.cloudflare.com/dns-query"
+    "+.github.com": "https://dns.cloudflare.com/dns-query"
+    "+.githubusercontent.com": "https://dns.cloudflare.com/dns-query"
+"proxy-providers":
+  主力机场:
+    type: "http"
+    url: "https://airport-a.example.com/api/v1/client/subscribe?token=EXAMPLE_TOKEN_AAA"
+    interval: 86400
+    path: "./profiles/主力机场.yaml"
+    "health-check":
+      enable: true
+      url: "http://cp.cloudflare.com/generate_204"
+      interval: 300
+  备用机场:
+    type: "http"
+    url: "https://airport-b.example.com/api/v1/client/subscribe?token=EXAMPLE_TOKEN_BBB"
+    interval: 86400
+    path: "./profiles/备用机场.yaml"
+    "health-check":
+      enable: true
+      url: "http://cp.cloudflare.com/generate_204"
+      interval: 300
+"proxy-groups":
+  -
+    name: "🚀 节点选择"
+    type: "select"
+    proxies:
+      - "⚡️ 自动优选"
+      - "🇭🇰 香港节点"
+      - "🇯🇵 日本节点"
+      - "🇺🇸 美国节点"
+      - "🇸🇬 新加坡节点"
+      - "🇹🇼 台湾节点"
+      - "DIRECT"
+  -
+    name: "⚡️ 自动优选"
+    type: "url-test"
+    url: "http://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    use:
+      - "主力机场"
+      - "备用机场"
+    "empty-fallback": "REJECT"
+  -
+    name: "🤖 AI 服务"
+    type: "select"
+    proxies:
+      - "🇺🇸 美国节点"
+      - "🇯🇵 日本节点"
+      - "🇸🇬 新加坡节点"
+      - "🚀 节点选择"
+  -
+    name: "🌐 谷歌服务"
+    type: "select"
+    proxies:
+      - "🤖 AI 服务"
+      - "🇺🇸 美国节点"
+      - "🇭🇰 香港节点"
+      - "🇯🇵 日本节点"
+      - "🚀 节点选择"
+  -
+    name: "🎬 国际流媒体"
+    type: "select"
+    proxies:
+      - "🇭🇰 香港节点"
+      - "🇹🇼 台湾节点"
+      - "🇯🇵 日本节点"
+      - "🇸🇬 新加坡节点"
+      - "🇺🇸 美国节点"
+      - "🚀 节点选择"
+  -
+    name: "🇭🇰 香港节点"
+    type: "url-test"
+    url: "http://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    filter: "(?:香港|HK|Hong ?Kong|HKT|HKBN)"
+    "empty-fallback": "REJECT"
+    use:
+      - "主力机场"
+      - "备用机场"
+  -
+    name: "🇯🇵 日本节点"
+    type: "url-test"
+    url: "http://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    filter: "(?:日本|JP|Japan|Tokyo|Osaka|东京|大阪)"
+    "empty-fallback": "REJECT"
+    use:
+      - "主力机场"
+      - "备用机场"
+  -
+    name: "🇺🇸 美国节点"
+    type: "url-test"
+    url: "http://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    filter: "(?:美国|US|USA|United ?States|LA|Los ?Angeles|Silicon ?Valley|西雅图|纽约)"
+    "empty-fallback": "REJECT"
+    use:
+      - "主力机场"
+      - "备用机场"
+  -
+    name: "🇸🇬 新加坡节点"
+    type: "url-test"
+    url: "http://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    filter: "(?:新加坡|SG|Singapore|狮城)"
+    "empty-fallback": "REJECT"
+    use:
+      - "主力机场"
+      - "备用机场"
+  -
+    name: "🇹🇼 台湾节点"
+    type: "url-test"
+    url: "http://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    filter: "(?:台湾|TW|Taiwan|Taipei|台北|新北|台中)"
+    "empty-fallback": "REJECT"
+    use:
+      - "主力机场"
+      - "备用机场"
+  -
+    name: "🇰🇷 韩国节点"
+    type: "url-test"
+    url: "http://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    filter: "(?:韩国|KR|Korea|Seoul|首尔)"
+    "empty-fallback": "REJECT"
+    use:
+      - "主力机场"
+      - "备用机场"
+  -
+    name: "🇬🇧 英国节点"
+    type: "url-test"
+    url: "http://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    filter: "(?:英国|UK|United ?Kingdom|London|伦敦)"
+    "empty-fallback": "REJECT"
+    use:
+      - "主力机场"
+      - "备用机场"
+  -
+    name: "🇩🇪 德国节点"
+    type: "url-test"
+    url: "http://cp.cloudflare.com/generate_204"
+    interval: 300
+    tolerance: 50
+    filter: "(?:德国|DE|Germany|Frankfurt|法兰克福)"
+    "empty-fallback": "REJECT"
+    use:
+      - "主力机场"
+      - "备用机场"
+rules:
+  - "DOMAIN-SUFFIX,example.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,antigravity.google,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,antigravity-unleash.goog,🤖 AI 服务"
+  - "DOMAIN,daily-cloudcode-pa.googleapis.com,🤖 AI 服务"
+  - "DOMAIN,daily-cloudcode-pa.sandbox.googleapis.com,🤖 AI 服务"
+  - "DOMAIN,cloudcode-pa.googleapis.com,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,youtube.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,youtu.be,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,ytimg.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,googlevideo.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,youtube-nocookie.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,ggpht.com,🌐 谷歌服务"
+  - "DOMAIN,youtubei.googleapis.com,🌐 谷歌服务"
+  - "DOMAIN,youtube.googleapis.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,claude.ai,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,claude.com,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,anthropic.com,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,chatgpt.com,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,chat.com,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,openai.com,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,oaistatic.com,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,oaiusercontent.com,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,sora.com,🤖 AI 服务"
+  - "DOMAIN,openaiapi-site.azureedge.net,🤖 AI 服务"
+  - "DOMAIN,production-openaicom-storage.azureedge.net,🤖 AI 服务"
+  - "DOMAIN,openaicom.imgix.net,🤖 AI 服务"
+  - "DOMAIN,chatgpt.livekit.cloud,🤖 AI 服务"
+  - "DOMAIN,host.livekit.cloud,🤖 AI 服务"
+  - "DOMAIN,turn.livekit.cloud,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,perplexity.ai,🤖 AI 服务"
+  - "DOMAIN-SUFFIX,perplexity.com,🤖 AI 服务"
+  - "DOMAIN-KEYWORD,perplexity,🤖 AI 服务"
+  - "GEOSITE,google,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,google.dev,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,googleusercontent.com,🌐 谷歌服务"
+  - "DOMAIN-KEYWORD,aihubmix,🇸🇬 新加坡节点"
+  - "DOMAIN-KEYWORD,tapnow,🇸🇬 新加坡节点"
+  - "DOMAIN-SUFFIX,weixin.qq.com,DIRECT"
+  - "DOMAIN-SUFFIX,wechat.com,DIRECT"
+  - "DOMAIN,generativelanguage.googleapis.com,🌐 谷歌服务"
+  - "DOMAIN,gemini.google.com,🌐 谷歌服务"
+  - "DOMAIN,aistudio.google.com,🌐 谷歌服务"
+  - "DOMAIN,ai.google.dev,🌐 谷歌服务"
+  - "DOMAIN,makersuite.google.com,🌐 谷歌服务"
+  - "DOMAIN,notebooklm.google.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,dify.ai,🚀 节点选择"
+  - "DOMAIN-SUFFIX,ollama.ai,🚀 节点选择"
+  - "DOMAIN-SUFFIX,manus.im,🚀 节点选择"
+  - "DOMAIN-SUFFIX,easyclaw.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,withgoogle.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,deepmind.google,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,deepmind.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,labs.google,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,jules.google,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,notebooklm.google,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,generativeai.google,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,proactivebackend-pa.googleapis.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,robinfrontend-pa.googleapis.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,geller-pa.googleapis.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,aisandbox-pa.googleapis.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,aida.googleapis.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,bard.google.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,spotify.com,🎬 国际流媒体"
+  - "DOMAIN-SUFFIX,spotifycdn.com,🎬 国际流媒体"
+  - "DOMAIN-SUFFIX,scdn.co,🚀 节点选择"
+  - "DOMAIN-SUFFIX,spotify.design,🎬 国际流媒体"
+  - "DOMAIN-SUFFIX,spotilocal.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,tospotify.com,🎬 国际流媒体"
+  - "DOMAIN-SUFFIX,pscdn.co,🚀 节点选择"
+  - "DOMAIN-SUFFIX,binance.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,binance.me,🚀 节点选择"
+  - "DOMAIN-SUFFIX,binance.cloud,🚀 节点选择"
+  - "DOMAIN-SUFFIX,bnbstatic.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,okx.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,okx.com.hk,🚀 节点选择"
+  - "DOMAIN-SUFFIX,okex.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,okx-cdn.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,bybit.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,bitget.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,aicoin.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,geckoterminal.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,futunn.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,mytokencap.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,aftermath.finance,🚀 节点选择"
+  - "DOMAIN-SUFFIX,sui.io,🚀 节点选择"
+  - "DOMAIN-SUFFIX,hashkey.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,chainbuzz.xyz,🚀 节点选择"
+  - "DOMAIN-SUFFIX,chainfeeds.xyz,🚀 节点选择"
+  - "DOMAIN-SUFFIX,google.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,google,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,googleapis.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,gstatic.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,gmail.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,googlemail.com,🌐 谷歌服务"
+  - "DOMAIN-KEYWORD,gmail,🌐 谷歌服务"
+  - "DOMAIN-KEYWORD,googlemail,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,googletagmanager.com,🌐 谷歌服务"
+  - "DOMAIN-SUFFIX,google-analytics.com,🌐 谷歌服务"
+  - "DOMAIN,api.github.com,🚀 节点选择"
+  - "DOMAIN,gist.github.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,github.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,github.io,🚀 节点选择"
+  - "DOMAIN-SUFFIX,githubusercontent.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,githubassets.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,githubstatus.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,ghcr.io,🚀 节点选择"
+  - "DOMAIN-SUFFIX,git-scm.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,gitbook.io,🚀 节点选择"
+  - "DOMAIN-SUFFIX,githubcopilot.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,github.dev,🚀 节点选择"
+  - "DOMAIN-SUFFIX,github.community,🚀 节点选择"
+  - "DOMAIN-SUFFIX,docker.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,docker.io,🚀 节点选择"
+  - "DOMAIN-SUFFIX,ubuntu.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,pypi.org,🚀 节点选择"
+  - "DOMAIN-SUFFIX,python.org,🚀 节点选择"
+  - "DOMAIN-SUFFIX,pythonhosted.org,🚀 节点选择"
+  - "DOMAIN-SUFFIX,readthedocs.io,🚀 节点选择"
+  - "DOMAIN-SUFFIX,go.dev,🚀 节点选择"
+  - "DOMAIN-SUFFIX,npmjs.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,brew.sh,🚀 节点选择"
+  - "DOMAIN-SUFFIX,cursor.sh,🚀 节点选择"
+  - "DOMAIN-SUFFIX,cursor.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,cursorapi.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,cursor-cdn.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,kiro.dev,🚀 节点选择"
+  - "DOMAIN-SUFFIX,jetbrains.com,🚀 节点选择"
+  - "DOMAIN,vsmarketplacebadge.apphb.com,🚀 节点选择"
+  - "DOMAIN,default.exp-tas.com,🚀 节点选择"
+  - "DOMAIN,webpubsub.azure.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,azure.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,imagedelivery.net,🚀 节点选择"
+  - "DOMAIN-SUFFIX,cloudfront.net,🚀 节点选择"
+  - "DOMAIN-SUFFIX,twitter.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,x.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,t.co,🚀 节点选择"
+  - "DOMAIN-SUFFIX,twimg.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,twitterstatic.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,twitteroauth.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,tweetdeck.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,grok.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,x.ai,🚀 节点选择"
+  - "DOMAIN-SUFFIX,telegram.org,🚀 节点选择"
+  - "DOMAIN-SUFFIX,microsoft.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,live.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,office.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,office365.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,sharepoint.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,onmicrosoft.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,windows.net,🚀 节点选择"
+  - "DOMAIN-SUFFIX,icloud.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,apple-cloudkit.com,🚀 节点选择"
+  - "DOMAIN-SUFFIX,registry.npmjs.org,🚀 节点选择"
+  - "DOMAIN-SUFFIX,npmjs.org,🚀 节点选择"
+  - "DOMAIN-SUFFIX,t.me,🚀 节点选择"
+  - "DOMAIN-SUFFIX,telegram.me,🚀 节点选择"
+  - "IP-CIDR,91.108.0.0/16,🚀 节点选择,no-resolve"
+  - "IP-CIDR,149.154.160.0/20,🚀 节点选择,no-resolve"
+  - "GEOSITE,private,DIRECT"
+  - "GEOIP,private,DIRECT,no-resolve"
+  - "GEOSITE,cn,DIRECT"
+  - "GEOIP,CN,DIRECT,no-resolve"
+  - "MATCH,🚀 节点选择"
