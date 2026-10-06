@@ -1,0 +1,10 @@
+#!/bin/sh
+# ProxyMatrix Pre-commit hook: Run two-tier leak scan
+echo "[pre-commit] Running leak audit..."
+python3 proxymatrix/utils/audit_leak.py --check-git
+EXIT_CODE=$?
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "[pre-commit] ERROR: Potential leak detected. Commit aborted."
+    exit $EXIT_CODE
+fi
+exit 0

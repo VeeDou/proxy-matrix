@@ -1,0 +1,51 @@
+# User private configuration & credentials (STRICT PRIVACY)
+local/
+*.local.*
+*.local
+credentials/
+.state/
+*.token
+*.pending
+*.retired
+.env*
+*.pem
+*.key
+id_*
+
+# Private subscription data files (if placed outside local/)
+subscriptions/urls.json
+subscriptions/providers.json
+subscriptions/snapshot-origins.json
+rules/sites.json
+
+# Build artifacts & runtime backups
+dist/
+profiles/
+backups/
+ops/
+*.yaml.bak
+*.conf.bak
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Testing & coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

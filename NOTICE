@@ -1,0 +1,33 @@
+ProxyMatrix
+Copyright (c) 2026 ProxyMatrix Maintainers
+
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+================================================================================
+Third-Party Rule Sets & Data Attribution
+================================================================================
+
+ProxyMatrix defines domain and IP routing rules compiled independently for compatibility
+with community configuration conventions established across the proxy ecosystem:
+
+1. Loyalsoldier / clash-rules & v2ray-rules-dat
+   - Repository: https://github.com/Loyalsoldier/clash-rules
+   - Repository: https://github.com/Loyalsoldier/v2ray-rules-dat
+   - License: GNU General Public License v3.0 (GPL-3.0)
+   - Scope & License Compatibility:
+     * ProxyMatrix does NOT include, copy, modify, or distribute any copyrighted code,
+       compiled binary databases (.dat, .mmdb), or proprietary lists from Loyalsoldier.
+     * All entries in rules/rules.json are public second-level web domains or generic
+       kernel syntax references (e.g. `GEOSITE,cn,DIRECT`, `GEOIP,private,DIRECT`).
+     * GEOSITE/GEOIP tags are standard protocol keywords interpreted exclusively by the
+       end-user's local Mihomo/Clash kernel at runtime.
+     * Consequently, ProxyMatrix is an independent MIT work and not a derivative work of Loyalsoldier.
+
+2. Community Rule Conventions (blackmatrix7 / ACL4SSR)
+   - Compatibility: General domain categorization conventions for AI services, streaming media,
+     and domestic bypassing. All rule entries in this repository are independently compiled domain strings.
+
+4. MetaCubeX / Mihomo
+   - Repository: https://github.com/MetaCubeX/mihomo
+   - License: GNU General Public License v3.0 (GPL-3.0)
+   - Usage: Target configuration syntax and kernel runtime compatibility standards.
