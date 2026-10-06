@@ -1,6 +1,6 @@
 # managed-by-proxy-matrix - Shadowrocket Node Subscription
 # [WARNING: DEMO MODE] This file contains sample offline nodes for demonstration only.
-# Configure real subscription URLs in local/urls.json and run 'python3 manage.py update' to generate real nodes.
+# Place valid node profiles in profiles/<name>.yaml to generate real subscription nodes.
 proxies:
   -
     name: "[主力机场] 🇭🇰 香港 BGP 01"

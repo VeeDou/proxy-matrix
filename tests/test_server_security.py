@@ -22,9 +22,18 @@ if str(REPO_ROOT) not in sys.path:
 from proxymatrix.web import server
 
 
+import tempfile
+
 class TestServerSecurity(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # Isolate admin state from repository .state directory
+        cls.tmp_dir = tempfile.TemporaryDirectory()
+        cls.orig_admin = server.ADMIN
+        server.ADMIN = Path(cls.tmp_dir.name) / "admin"
+        server.ADMIN.mkdir(parents=True, exist_ok=True)
+        server.write_json(server.ADMIN / "draft.json", server.clean_draft())
+
         # Bind ephemeral port on loopback
         cls.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.ConsoleHandler)
         cls.port = cls.httpd.server_port
@@ -36,6 +45,8 @@ class TestServerSecurity(unittest.TestCase):
     def tearDownClass(cls):
         cls.httpd.shutdown()
         cls.httpd.server_close()
+        server.ADMIN = cls.orig_admin
+        cls.tmp_dir.cleanup()
 
     def test_host_header_enforcement(self):
         """CRITICAL SECURITY TEST: Ensure requests with spoofed/external Host headers are blocked."""

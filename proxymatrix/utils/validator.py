@@ -5,9 +5,10 @@ Zero third-party dependencies: 100% Python 3 standard library.
 """
 
 import ipaddress
+import json
 from pathlib import Path
 import re
-from typing import Any, Dict, Set
+from typing import Any, Dict, Optional, Set
 import urllib.parse
 
 ALLOWED_RULE_TYPES: Set[str] = {
@@ -20,22 +21,51 @@ ALLOWED_RULE_TYPES: Set[str] = {
     "GEOIP",
 }
 
-ALLOWED_TARGET_GROUPS: Set[str] = {
-    "@proxy",
-    "@ai",
-    "@google",
-    "@stream",
-    "@direct",
-    "@reject",
-    "@auto",
-    "DIRECT",
-    "REJECT",
-    "PROXY",
-}
-
 DOMAIN_REGEX = re.compile(r"^[a-zA-Z0-9-_.]+$")
 KEYWORD_REGEX = re.compile(r"^[a-zA-Z0-9-_.]+$")
 SUBSCRIPTION_NAME_REGEX = re.compile(r"^[a-zA-Z0-9_\-\u4e00-\u9fa5]{1,64}$")
+
+
+def get_allowed_target_groups(config_dir: Optional[Path] = None) -> Set[str]:
+    """Dynamically load all valid target group IDs from groups.json and regions.json."""
+    if config_dir is None:
+        config_dir = Path(__file__).resolve().parents[2] / "config"
+
+    # Base valid routing targets
+    groups: Set[str] = {
+        "DIRECT",
+        "REJECT",
+        "PROXY",
+        "@proxy",
+        "@auto",
+        "@ai",
+        "@google",
+        "@media",
+        "@direct",
+        "@reject",
+    }
+
+    groups_file = config_dir / "groups.json"
+    if groups_file.is_file():
+        try:
+            with open(groups_file, "r", encoding="utf-8") as f:
+                for item in json.load(f):
+                    if isinstance(item, dict) and "id" in item:
+                        groups.add(item["id"])
+        except Exception:
+            pass
+
+    regions_file = config_dir / "regions.json"
+    if regions_file.is_file():
+        try:
+            with open(regions_file, "r", encoding="utf-8") as f:
+                for item in json.load(f):
+                    if isinstance(item, dict) and "id" in item:
+                        groups.add(item["id"])
+        except Exception:
+            pass
+
+    return groups
 
 
 def validate_subscription_entry(name: str, url: str) -> None:
@@ -58,8 +88,8 @@ def validate_subscription_entry(name: str, url: str) -> None:
         raise ValueError(f"订阅 [{name}] 的 URL 必须是有效的 HTTP/HTTPS 地址: {url}")
 
 
-def validate_site_rule(rule: Dict[str, Any]) -> Dict[str, Any]:
-    """Validate a custom site routing rule dictionary."""
+def validate_site_rule(rule: Dict[str, Any], config_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Validate a custom site routing rule dictionary and preserve user metadata."""
     if not isinstance(rule, dict):
         raise ValueError("规则必须是 JSON 对象。")
 
@@ -87,14 +117,18 @@ def validate_site_rule(rule: Dict[str, Any]) -> Dict[str, Any]:
     if any(c in target for c in ("\r", "\n", ",", " ", "\t")):
         raise ValueError(f"规则目标策略组 [{target}] 包含非法字符。")
 
-    if target not in ALLOWED_TARGET_GROUPS and not target.startswith("@region_"):
+    allowed_targets = get_allowed_target_groups(config_dir)
+    if target not in allowed_targets:
         raise ValueError(f"目标策略组 [{target}] 未定义或未知。")
 
-    res = {
+    res: Dict[str, Any] = {
         "type": rule_type,
         "domain": domain,
         "target": target,
+        "enabled": bool(rule.get("enabled", True)),
     }
+    if "name" in rule and rule["name"] is not None:
+        res["name"] = str(rule["name"]).strip()
     if "id" in rule and rule["id"]:
         res["id"] = str(rule["id"])
     return res

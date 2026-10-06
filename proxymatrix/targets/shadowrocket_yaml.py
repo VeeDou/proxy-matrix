@@ -79,7 +79,7 @@ def compile_shadowrocket_yaml(
         header = (
             "# managed-by-proxy-matrix - Shadowrocket Node Subscription\n"
             "# [WARNING: DEMO MODE] This file contains sample offline nodes for demonstration only.\n"
-            "# Configure real subscription URLs in local/urls.json and run 'python3 manage.py update' to generate real nodes.\n"
+            "# Place valid node profiles in profiles/<name>.yaml to generate real subscription nodes.\n"
         )
     else:
         header = (
@@ -125,7 +125,7 @@ def load_subscription_nodes(
             raise FileNotFoundError(
                 f"未找到订阅缓存文件 (预期位置: {profiles_dir}/<机场名>.yaml)。"
                 f"已配置真实订阅 ({missing_names})，但本地尚无节点缓存。"
-                f"请先运行 'python3 manage.py update' 拉取真实节点缓存，或清空订阅 URL 进入示例演示模式。"
+                f"请在 profiles/<机场名>.yaml 放置节点配置，或清空订阅 URL 进入示例演示模式。"
             )
 
         # Explicit test / offline fallback allowed

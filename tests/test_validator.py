@@ -24,11 +24,16 @@ class TestValidator(unittest.TestCase):
             {"type": "IP-CIDR", "domain": "192.0.2.0/24", "target": "DIRECT"},
             {"type": "IP-CIDR6", "domain": "2001:db8::/32", "target": "REJECT"},
             {"type": "DOMAIN-SUFFIX", "domain": "hk-stream.dev", "target": "@region_hk"},
+            {"type": "DOMAIN-SUFFIX", "domain": "netflix.com", "target": "@media", "name": "Custom Netflix", "enabled": False},
         ]
         for item in valid_cases:
             res = validate_site_rule(item)
             self.assertEqual(res["domain"], item["domain"].lower())
             self.assertEqual(res["type"], item["type"].upper())
+            if "name" in item:
+                self.assertEqual(res["name"], item["name"])
+            if "enabled" in item:
+                self.assertEqual(res["enabled"], item["enabled"])
 
     def test_reject_injected_site_rules(self):
         """CRITICAL P2-1 TEST: Ensure malicious rule inputs (newlines, delimiters) are blocked."""
@@ -47,6 +52,10 @@ class TestValidator(unittest.TestCase):
             {"type": "DOMAIN-SUFFIX", "domain": "example.com", "target": "@nonexistent_group"},
             # 7. Target injection with newline
             {"type": "DOMAIN-SUFFIX", "domain": "example.com", "target": "@proxy\nREJECT"},
+            # 8. Obsolete/wrong group @stream (must be @media)
+            {"type": "DOMAIN-SUFFIX", "domain": "example.com", "target": "@stream"},
+            # 9. Non-existent region @region_xx
+            {"type": "DOMAIN-SUFFIX", "domain": "example.com", "target": "@region_xx"},
         ]
         for item in malicious_cases:
             with self.assertRaises(ValueError, msg=f"Should reject: {item}"):

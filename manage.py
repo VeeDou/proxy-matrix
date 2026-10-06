@@ -111,8 +111,10 @@ def build_all(
         mode_str = "示例离线节点" if is_sample else "真实订阅节点"
         sr_yaml_status = f"{sr_yaml_output} ({sr_yaml_output.stat().st_size} 字节, {mode_str})"
     except FileNotFoundError as e:
-        print(f"[!] 提示: 跳过构建 shadowrocket.yaml: {e}")
-        sr_yaml_status = "[跳过] 本地 profiles/ 缺少真实订阅缓存"
+        if sr_yaml_output.is_file():
+            sr_yaml_output.unlink()
+        print(f"[!] 提示: 跳过构建 shadowrocket.yaml (已清理旧产物): {e}")
+        sr_yaml_status = "[跳过] 本地 profiles/ 缺少真实订阅节点缓存 (已清理旧产物)"
 
     print(f"[✓] 构建完成:")
     print(f"  - Clash Profile:        {clash_output} ({clash_output.stat().st_size} 字节)")
@@ -151,7 +153,7 @@ def validate_with_core(profile_path: Path, core_path: Path = DEFAULT_CORE) -> bo
     return True
 
 
-def apply_profile(profile_path: Path, app_home: Path = APP_HOME) -> bool:
+def apply_profile(profile_path: Path, app_home: Path = APP_HOME, backup_dir: Optional[Path] = None) -> bool:
     """Atomically apply profile to Clash Verge Rev active profiles with automated backup."""
     profiles_dir = app_home / "profiles"
     if not profiles_dir.is_dir():
@@ -169,7 +171,8 @@ def apply_profile(profile_path: Path, app_home: Path = APP_HOME) -> bool:
         except Exception:
             continue
 
-    backup_dir = ROOT / ".state/backups"
+    if backup_dir is None:
+        backup_dir = ROOT / ".state/backups"
     backup_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 

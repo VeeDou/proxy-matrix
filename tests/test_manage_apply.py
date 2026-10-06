@@ -29,18 +29,19 @@ class TestManageApply(unittest.TestCase):
             new_profile = Path(td) / "new_clash.yaml"
             new_profile.write_text(f"{manage.MARKER}\nnew_content: 100\n", encoding="utf-8")
 
+            mock_backup_dir = Path(td) / "backups"
+
             # Apply
-            applied = manage.apply_profile(new_profile, app_home=mock_app_home)
+            applied = manage.apply_profile(new_profile, app_home=mock_app_home, backup_dir=mock_backup_dir)
             self.assertTrue(applied)
 
             # Verify active profile updated
             updated_content = active_file.read_text(encoding="utf-8")
             self.assertIn("new_content: 100", updated_content)
 
-            # Verify backup created in .state/backups
-            backup_dir = REPO_ROOT / ".state/backups"
-            backups = list(backup_dir.glob("my_config_*.yaml"))
-            self.assertTrue(len(backups) >= 1, "Backup file should be created")
+            # Verify backup created in isolated mock_backup_dir
+            backups = list(mock_backup_dir.glob("my_config_*.yaml"))
+            self.assertEqual(len(backups), 1, "Exactly one backup file should be created in isolated directory")
 
     def test_check_command_missing_core_returns_code_2(self):
         """CRITICAL P2-3 TEST: Ensure manage.py check with missing core exits with non-zero code 2."""
