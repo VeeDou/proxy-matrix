@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Clash Verge · 配置管理台</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="/"><span class="brand-icon">⚡</span><div>Clash Verge<span>配置管理台</span></div></a>
+  <div class="workspace-label">本地配置</div>
+  <nav aria-label="主要导航">
+    <button class="nav active" data-page="overview"><span>◉</span>概览</button>
+    <button class="nav" data-page="subscriptions"><span>↗</span>机场订阅</button>
+    <button class="nav" data-page="sites"><span>☷</span>网站与 App</button>
+    <button class="nav" data-page="tests"><span>◇</span>测试</button>
+    <button class="nav" data-page="sync"><span>↻</span>生成与应用</button>
+  </nav>
+  <div class="sidebar-bottom">
+    <span class="privacy-dot"></span>本机优先 · 隐私安全
+    <p>订阅地址与节点信息仅存储于本机，绝不上传到公开代码仓库。</p>
+  </div>
+</aside>
+<div class="shell">
+  <header class="topbar">
+    <span id="breadcrumb">本地配置 / 概览</span>
+    <div class="top-meta">
+      <span id="live-badge" class="badge">正在连接</span>
+      <code id="version">—</code>
+    </div>
+  </header>
+  <main>
+    <div id="login-notice" class="notice hidden"></div>
+    <div id="conflict-bar" class="notice amber hidden" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+      <span>⚠️ <b>版本冲突提示</b>：底层来源配置文件已被外部修改，当前草稿与磁盘最新版本不一致。点击右侧按钮将放弃未保存草稿并载入磁盘最新配置。</span>
+      <button id="btn-reload-draft" class="button secondary" style="padding: 4px 10px; font-size: 13px;">重置草稿并载入磁盘版本</button>
+    </div>
+    <div id="remote-conflict-bar" class="notice amber hidden" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+      <span>⚠️ <b>并发编辑提醒</b>：草稿已在其他窗口修改。当前窗口的未保存修改已保留；如需覆盖请点击保存（将提示版本冲突），或载入最新草稿。</span>
+      <button id="btn-reload-remote-draft" class="button secondary" style="padding: 4px 10px; font-size: 13px;">载入最新草稿</button>
+    </div>
+    <div id="core-sync-bar" class="notice amber hidden" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+      <span id="core-sync-bar-text">⚠️ <b>配置已同步至客户端，待内核重载</b>：最新配置文件已更新。请在 Clash Verge 客户端中点击配置卡片【ProxyMatrix 统一配置】以重载运行中的策略。</span>
+      <button id="btn-ack-core-sync" class="button secondary btn-ack-url hidden" style="padding: 4px 10px; font-size: 13px; margin-left: 12px; white-space: nowrap;">我已在客户端重载</button>
+    </div>
+    <div id="draft-bar" class="draft-bar hidden">
+      <span>有未生效的修改草稿。测试将使用草稿；现行代理配置不受影响。</span>
+      <button class="text-button" data-go="sync">查看与应用</button>
+    </div>
+    <section id="page-overview" class="page">
+      <div class="page-heading">
+        <div class="eyebrow">OVERVIEW</div>
+        <h1>Clash Verge 配置管理台</h1>
+        <p>一站式聚合管理机场订阅、自定义分流规则、节点测试与配置一键下发。</p>
+      </div>
+      <div class="metrics">
+        <div class="metric"><span>机场订阅数</span><strong id="airport-count">0</strong><small>支持多机场自动聚合</small></div>
+        <div class="metric"><span>已加载节点</span><strong id="node-count">—</strong><small>来自运行中的 Clash 内核</small></div>
+        <div class="metric"><span>自定义规则</span><strong id="site-count">0</strong><small>支持域名、后缀与关键词</small></div>
+      </div>
+      <div class="overview-grid">
+        <article class="panel route-panel">
+          <div class="panel-heading"><h2>AI 与 Google 分流通道</h2><span class="badge teal">专用分流</span></div>
+          <div class="route-path">
+            <span>Google · YouTube · AI 服务</span>
+            <span class="route-arrow">↓</span>
+            <strong id="primary-node">🤖 AI 服务 策略组</strong>
+          </div>
+          <div id="selection-list" class="selection-list"></div>
+          <div class="panel-footer">
+            <button class="button secondary" data-task="google">测试 Google 出口</button>
+            <small>隔离环境测试，不中断当前网络连接。</small>
+          </div>
+        </article>
+        <article class="panel quick-panel">
+          <h2>常用操作</h2>
+          <button class="quick-action" data-go="subscriptions">
+            <span class="quick-icon">↗</span>
+            <div><strong>管理机场订阅</strong><span>添加、更换或测试机场 URL</span></div>
+            <span>→</span>
+          </button>
+          <button class="quick-action" data-go="sites">
+            <span class="quick-icon">＋</span>
+            <div><strong>添加网站分流</strong><span>输入域名，分配到指定策略组</span></div>
+            <span>→</span>
+          </button>
+          <button class="quick-action" data-go="tests">
+            <span class="quick-icon">◇</span>
+            <div><strong>诊断与连通测试</strong><span>检查配置语法、节点连通与模型通道</span></div>
+            <span>→</span>
+          </button>
+        </article>
+      </div>
+      <div id="import-notice" class="notice hidden">
+        当前 Clash Verge 尚未导入本工具配置。请先在 Profiles 页面导入 <code>dist/Clash-Verge-Rev.yaml</code>。
+      </div>
+    </section>
+    <section id="page-subscriptions" class="page hidden">
+      <div class="page-heading heading-row">
+        <div>
+          <div class="eyebrow">SUBSCRIPTIONS</div>
+          <h1>机场订阅管理</h1>
+        </div>
+        <div>
+          <button id="refresh-all-subs" class="button secondary" data-task="refresh_providers" style="margin-right: 8px;">↻ 刷新全部机场节点</button>
+          <button id="save-urls" class="button secondary" style="margin-right: 8px;">保存为草稿</button>
+          <button class="button btn-apply-all" id="btn-apply-all-subs">⚡ 应用修改</button>
+        </div>
+      </div>
+      <article class="panel" style="margin-bottom: 20px;">
+        <div class="panel-heading"><h2>添加新机场</h2></div>
+        <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+          <label style="flex:1; min-width:180px;">机场备注名称<input id="new-sub-name" placeholder="例如：主力机场" style="margin-top:6px;"></label>
+          <label style="flex:2; min-width:260px;">订阅链接 (HTTP/HTTPS)<input id="new-sub-url" placeholder="https://..." style="margin-top:6px;"></label>
+          <button id="btn-add-sub" class="button secondary" type="button" style="margin-bottom:1px;">＋ 添加机场</button>
+        </div>
+      </article>
+      <div id="subscription-grid" class="subscription-grid"></div>
+      <div class="notice soft">
+        换新地址后会自动拉取新节点。订阅可下载、节点可连通、AI 可用是独立的判断层级；如果某个别节点超时，不一定需要更换订阅。
+      </div>
+    </section>
+    <section id="page-sites" class="page hidden">
+      <div class="page-heading heading-row">
+        <div>
+          <div class="eyebrow">ROUTING</div>
+          <h1>自定义网站与 App 分流</h1>
+          <p>支持将特定网站或服务按域名、后缀或关键词定向分流至指定策略组。</p>
+        </div>
+        <div>
+          <button class="button btn-apply-all" id="btn-apply-all-sites">⚡ 应用修改</button>
+        </div>
+      </div>
+      <article class="panel editor-panel">
+        <div class="panel-heading"><h2 id="site-form-title">新增分流规则</h2><span class="badge">优先匹配</span></div>
+        <form id="site-form">
+          <input id="edit-id" type="hidden">
+          <div class="form-grid">
+            <label>名称备注<input id="site-name" placeholder="例如：公司内网 / 特定服务" maxlength="80"></label>
+            <label>策略组<select id="site-group"></select></label>
+            <label>匹配类型
+              <select id="site-type">
+                <option value="DOMAIN-SUFFIX">域名及其子域名 (DOMAIN-SUFFIX，推荐)</option>
+                <option value="DOMAIN">精确域名 (DOMAIN)</option>
+                <option value="DOMAIN-KEYWORD">域名关键词 (DOMAIN-KEYWORD)</option>
+              </select>
+            </label>
+            <label class="domains-label">域名或网址
+              <textarea id="site-domains" rows="3" placeholder="api.example.com&#10;web.example.com&#10;每行一个，也可以直接粘贴完整网址" required></textarea>
+            </label>
+          </div>
+          <div class="form-footer">
+            <p id="match-hint">填入纯域名或完整 URL 均会自动规范化提取主机名。</p>
+            <div>
+              <button type="button" id="cancel-edit" class="button secondary hidden">取消编辑</button>
+              <button type="submit" class="button">保存到草稿</button>
+            </div>
+          </div>
+        </form>
+      </article>
+      <article class="panel rules-panel">
+        <div class="panel-heading"><h2>已配置的分流规则</h2><span id="rules-count" class="muted">0 条</span></div>
+        <div id="site-list"></div>
+      </article>
+    </section>
+    <section id="page-tests" class="page hidden">
+      <div class="page-heading">
+        <div class="eyebrow">TESTS</div>
+        <h1>隔离环境测试</h1>
+        <p>在沙盒隔离内核中验证草稿配置，绝不影响你当前正在使用的 Clash Verge 正常代理。</p>
+      </div>
+      <div class="test-grid">
+        <article class="panel test-card">
+          <span class="test-number">01</span>
+          <h2>配置语法校验</h2>
+          <p>检查策略组引用、DNS 规范及内核解析有效性。</p>
+          <button class="button secondary" data-task="check">校验配置</button>
+        </article>
+        <article class="panel test-card">
+          <span class="test-number">02</span>
+          <h2>Google / AI 出口</h2>
+          <p>测试 Google 登录、YouTube 与 AI 域名的 TLS 握手及出口一致性。</p>
+          <button class="button secondary" data-task="google">测试连通性</button>
+        </article>
+        <article class="panel test-card">
+          <span class="test-number">03</span>
+          <h2>AI API 端点探测</h2>
+          <p>测试 OpenAI、Anthropic 与 Google AI 接口的 TLS 握手及响应可用性。</p>
+          <button class="button secondary" data-task="ai">测试 AI 端点</button>
+        </article>
+      </div>
+      <article class="panel website-test">
+        <h2>测试指定网站分流</h2>
+        <p>输入任意域名或网址，实时查看命中的分流规则、出口节点链路及 HTTP 返回状态。</p>
+        <form id="website-test-form">
+          <input id="test-url" placeholder="https://example.com" required>
+          <button class="button" type="submit">测试分流</button>
+        </form>
+      </article>
+    </section>
+    <section id="page-sync" class="page hidden">
+      <div class="page-heading">
+        <div class="eyebrow">APPLY</div>
+        <h1>生成配置并应用到 Clash Verge</h1>
+        <p>保存草稿后，一键生成标准 Mihomo 配置并应用到本地 Clash Verge 客户端中。</p>
+      </div>
+      <article class="panel publish-panel">
+        <div class="publish-steps">
+          <div><span>1</span><strong>编辑配置</strong><small>管理订阅或分流域名</small></div>
+          <div><span>2</span><strong>沙盒测试</strong><small>确认规则与连通性</small></div>
+          <div><span>3</span><strong>生成配置文件</strong><small>自动备份旧配置</small></div>
+          <div><span>4</span><strong>Clash Verge 生效</strong><small>重新点击卡片载入</small></div>
+        </div>
+        <div class="publish-buttons">
+          <button class="button" data-task="publish">生成并应用到 Clash Verge</button>
+          <button class="button secondary" data-task="check">仅重新校验</button>
+          <button class="text-button danger" id="reset-draft">放弃草稿，载入原配置</button>
+        </div>
+      </article>
+      <article class="panel" style="margin-top: 16px;">
+        <div class="panel-heading">
+          <h2>⚡ 作为【远端订阅】接入 Clash Verge</h2>
+          <span class="badge teal">支持显示“多久前更新”与一键刷新 ⟳</span>
+        </div>
+        <p style="margin: 8px 0; font-size: 13px; color: var(--muted, #666);">
+          如果你希望在 Clash Verge 的 Profiles 页面像其他机场卡片一样显示<b>“刚刚更新”、“2小时前”</b>并拥有<b>一键刷新 ⟳ 按钮</b>：
+        </p>
+        <div style="display: flex; gap: 10px; align-items: center; margin: 10px 0;">
+          <input readonly id="remote-sub-url" value="" placeholder="正在生成安全订阅链接..." style="flex: 1; padding: 8px 12px; font-family: monospace; font-size: 13px; background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px;">
+          <button class="button" id="copy-sub-url" type="button">复制订阅地址</button>
+        </div>
+        <small style="color: var(--muted, #666); font-size: 12px;">用法：点击上方复制 ➔ 打开 Clash Verge Rev 的 Profiles 页面 ➔ 在顶部输入框粘贴并点击【导入】即可！</small>
+      </article>
+      <div class="notice">
+        点击应用后，脚本会自动更新 Clash Verge 的本地 Profile 文件并保留时间戳备份。如果内核未立即重载，请在 Clash Verge Rev 的 Profiles 页面重新选中该配置卡片。
+      </div>
+      <article class="panel command-panel">
+        <h2>终端命令行操作</h2>
+        <p>你也可以随时在终端运行命令：</p>
+        <pre># 生成并校验配置
+python3 scripts/manage.py build
+python3 scripts/manage.py check
+
+# 生成并直接应用更新至 Clash Verge Profiles
+python3 scripts/manage.py apply</pre>
+      </article>
+    </section>
+    <section id="results" class="panel result-panel hidden">
+      <div class="panel-heading"><h2 id="result-title">操作结果</h2><span id="result-state" class="badge">等待</span></div>
+      <p id="result-message"></p>
+      <div id="result-details"></div>
+    </section>
+  </main>
+<div id="sync-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="sync-modal-title">应用结果</h3>
+      <button type="button" class="modal-close close-sync-modal" id="btn-close-sync-modal-x" aria-label="关闭">✕</button>
+    </div>
+    <div class="modal-body" id="sync-modal-body"></div>
+    <div class="modal-footer" id="sync-modal-footer"></div>
+  </div>
+</div>
+<div id="toast" class="toast hidden" role="status"></div>
+</body>
+</html>
