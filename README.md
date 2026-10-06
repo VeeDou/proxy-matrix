@@ -130,7 +130,11 @@ python3 manage.py console
 
 ## 安全与开源规范
 
-- **零敏感信息承诺**：仓库内置两级泄露审计器，在提交代码前自动校验：
+- **Git 提交防泄露拦截**：仓库内置 pre-commit 泄露扫描钩子。执行 `python3 manage.py init` 会自动配置，也可手动启用：
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+- **手动全局合规审计**：在推送代码前可随时手动校验全部文件与 Git 提交历史：
   ```bash
   python3 proxymatrix/utils/audit_leak.py --check-git
   ```

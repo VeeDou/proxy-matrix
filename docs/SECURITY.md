@@ -27,9 +27,16 @@ ProxyMatrix 从架构设计上将**凭据安全**与**防泄露**置于最高优
 
 ---
 
-## 3. 提交前本地安全审计
+## 3. 提交前本地安全审计与 Git 钩子
 
-在向公开或私有 Git 仓库推送任何代码前，必须执行：
+在新 clone 的工作区推荐启用内置的提交防泄露钩子（或运行 `python3 manage.py init` 自动启用）：
+
+```bash
+# 启用本地 Git 提交泄露拦截钩子
+git config core.hooksPath .githooks
+```
+
+在向公开或私有 Git 仓库推送任何代码前，也可手动执行全局核验：
 
 ```bash
 # 扫描本地代码与 Git 元数据历史
@@ -42,4 +49,4 @@ python3 proxymatrix/utils/audit_leak.py --check-git
 
 ## 4. 漏洞反馈
 
-若在本项目中发现任何潜在的安全漏洞，请勿公开提交 Issue。请联系项目维护者：`veedou@users.noreply.github.com`。
+若在本项目中发现任何潜在的安全漏洞，请勿公开提交 Issue。请通过 GitHub 仓库页面的「Security」->「Report a vulnerability」提交私有安全报告（GitHub Private Vulnerability Reporting），由维护团队安全接收并协同修复。

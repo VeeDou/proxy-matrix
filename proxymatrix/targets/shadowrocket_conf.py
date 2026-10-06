@@ -243,9 +243,9 @@ def compile_shadowrocket_conf(
         "",
         "[Proxy Group]",
         "# Built-in Service Groups",
-        'AI Services = select, policy-regex-filter=(?:美国|US|USA|日本|JP|新加坡|SG)',
-        'Google Services = select, policy-regex-filter=(?:美国|US|USA|日本|JP|香港|HK)',
-        'Streaming Media = select, policy-regex-filter=(?:香港|HK|台湾|TW|日本|JP|新加坡|SG)',
+        'AI Services = select, include-all-proxies=true, policy-regex-filter=(?:美国|US|USA|日本|JP|新加坡|SG)',
+        'Google Services = select, include-all-proxies=true, policy-regex-filter=(?:美国|US|USA|日本|JP|香港|HK)',
+        'Streaming Media = select, include-all-proxies=true, policy-regex-filter=(?:香港|HK|台湾|TW|日本|JP|新加坡|SG)',
         "",
         "# Dynamic Region Groups",
     ]
@@ -254,7 +254,7 @@ def compile_shadowrocket_conf(
         sr_name = SR_GROUP_NAMES.get(r.id, r.display_name)
         # Note: Shadowrocket policy-regex-filter forbids '=' in regex
         clean_regex = r.regex_pattern.replace("=", "")
-        group_lines.append(f"{sr_name} = select, policy-regex-filter={clean_regex}")
+        group_lines.append(f"{sr_name} = select, include-all-proxies=true, policy-regex-filter={clean_regex}")
 
     # Assemble full INI
     return "\n".join(general_lines + rule_lines + group_lines) + "\n"

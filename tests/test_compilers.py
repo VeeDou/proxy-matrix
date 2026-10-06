@@ -78,10 +78,10 @@ class TestCompilers(unittest.TestCase):
         self.assertIn("[Rule]", conf_text)
         self.assertIn("[Proxy Group]", conf_text)
 
-        # 5. Dynamic Region Groups without personal names
-        self.assertIn("Hong Kong = select, policy-regex-filter=", conf_text)
-        self.assertIn("Japan = select, policy-regex-filter=", conf_text)
-        self.assertIn("Singapore = select, policy-regex-filter=", conf_text)
+        # 5. Dynamic Region Groups with include-all-proxies=true
+        self.assertIn("Hong Kong = select, include-all-proxies=true, policy-regex-filter=", conf_text)
+        self.assertIn("Japan = select, include-all-proxies=true, policy-regex-filter=", conf_text)
+        self.assertIn("Singapore = select, include-all-proxies=true, policy-regex-filter=", conf_text)
 
         # 6. Zero unresolved @ residue in Shadowrocket rules
         self.assertNotIn("@", conf_text, "All logical IDs must be fully resolved with no '@' remaining!")

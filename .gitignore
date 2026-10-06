@@ -26,6 +26,11 @@ ops/
 *.yaml.bak
 *.conf.bak
 
+# Docker & Caddy deployment local state & secrets
+deploy/docker/Caddyfile
+deploy/docker/caddy_data/
+deploy/docker/caddy_config/
+
 # Python artifacts
 __pycache__/
 *.py[cod]

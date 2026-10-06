@@ -14,8 +14,9 @@ python3 manage.py init
 
 该命令会：
 - 自动创建隔离目录 `profiles/`（权限 `0700`）、`dist/`、`local/` 等；
-- 初始化订阅模板 `subscriptions/urls.json` 与规则模板 `rules/sites.json`；
-- 生成随机 64 位防猜测 Token 供远程部署使用。
+- 初始化订阅模板 `subscriptions/urls.json` 与规则模板 `rules/sites.json`（权限严格锁定 `0600`）；
+- 自动为 Git 仓库启用本地提交防泄露拦截钩子（`git config core.hooksPath .githooks`）；
+- 生成随机 64 位防猜测 Token 并安全保存于 `.state/deploy_token`（权限 `0600`）供远程部署使用。
 
 ---
 

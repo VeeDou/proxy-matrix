@@ -46,7 +46,11 @@ def load_json(rel_path: str, fallback_example: Optional[str] = None) -> Any:
                 # Auto-initialize from example if missing
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(example, target)
-                print(f"[提示] 已从 {fallback_example} 自动初始化 {rel_path}。")
+                try:
+                    os.chmod(target, 0o600)
+                except Exception:
+                    pass
+                print(f"[提示] 已从 {fallback_example} 自动初始化 {rel_path} (权限: 0600)。")
                 return json.loads(target.read_text(encoding="utf-8"))
         return None
     return json.loads(target.read_text(encoding="utf-8"))
@@ -242,7 +246,7 @@ def init_project() -> None:
     except Exception:
         pass
 
-    # 2. Initialize default configurations from examples if absent
+    # 2. Initialize default configurations from examples if absent and enforce 0600
     configs = [
         ("subscriptions/urls.json", "subscriptions/urls.example.json"),
         ("rules/sites.json", "rules/sites.example.json"),
@@ -253,16 +257,48 @@ def init_project() -> None:
         example = ROOT / example_rel
         if not target.exists() and example.exists():
             shutil.copy2(example, target)
-            print(f"  [+] 已创建初始配置文件: {target_rel} (自 {example_rel})")
+            try:
+                os.chmod(target, 0o600)
+            except Exception:
+                pass
+            print(f"  [+] 已创建初始配置文件: {target_rel} (权限: 0600，自 {example_rel})")
+        elif target.exists():
+            try:
+                os.chmod(target, 0o600)
+            except Exception:
+                pass
 
-    # 3. Generate a recommended 64-hex distribution token
+    # 3. Generate a recommended 64-hex distribution token and save to .state/deploy_token (0600)
     token = secrets.token_hex(32)
+    deploy_token_file = ROOT / ".state/deploy_token"
+    deploy_token_file.write_text(token + "\n", encoding="utf-8")
+    try:
+        os.chmod(deploy_token_file, 0o600)
+    except Exception:
+        pass
+
+    # 4. Enable git pre-commit hook if in git repository
+    hooks_enabled = False
+    if (ROOT / ".git").is_dir() and (ROOT / ".githooks").is_dir():
+        try:
+            subprocess.run(
+                ["git", "-C", str(ROOT), "config", "core.hooksPath", ".githooks"],
+                check=True,
+                capture_output=True,
+            )
+            hooks_enabled = True
+        except Exception:
+            pass
+
     print("\n[✓] 初始化完成！")
     print(f"  - 订阅缓存目录:   {ROOT / 'profiles'} (权限: 0700)")
     print(f"  - 客户端产物目录: {ROOT / 'dist'}")
-    print(f"  - 本地私有配置:   {ROOT / 'local'} (已加入 .gitignore，安全隔离)")
-    print(f"\n[推荐安全部署 Token (64-Hex)]:")
-    print(f"  export SECRET_SUBDIR=\"{token}\"")
+    print(f"  - 本地私有配置:   {ROOT / 'local'} (权限: 0700，已加入 .gitignore，安全隔离)")
+    if hooks_enabled:
+        print("  - Git 泄露防护:   已自动启用本地提交扫描钩子 (core.hooksPath = .githooks)")
+    print(f"\n[安全部署 Token (遵循 T1 决策，不打印明文)]:")
+    print(f"  - 凭据文件: {deploy_token_file} (权限: 0600)")
+    print("  - 导出命令: export SECRET_SUBDIR=\"$(cat .state/deploy_token)\"")
     print("\n下一步提示:")
     print("  1. 在 subscriptions/urls.json 或 local/urls.json 中填入你的机场订阅 URL;")
     print("  2. 执行 `python3 manage.py fetch` 下载并缓存节点;")
