@@ -121,14 +121,24 @@ def validate_site_rule(rule: Dict[str, Any], config_dir: Optional[Path] = None) 
     if target not in allowed_targets:
         raise ValueError(f"目标策略组 [{target}] 未定义或未知。")
 
+    raw_enabled = rule.get("enabled", True)
+    if isinstance(raw_enabled, bool):
+        enabled = raw_enabled
+    elif isinstance(raw_enabled, str) and raw_enabled.strip().lower() in ("true", "false"):
+        enabled = raw_enabled.strip().lower() == "true"
+    else:
+        raise ValueError(f"规则 enabled 属性必须为布尔值 (true/false)，收到: {raw_enabled!r}")
+
     res: Dict[str, Any] = {
         "type": rule_type,
         "domain": domain,
         "target": target,
-        "enabled": bool(rule.get("enabled", True)),
+        "enabled": enabled,
     }
     if "name" in rule and rule["name"] is not None:
-        res["name"] = str(rule["name"]).strip()
+        raw_name = str(rule["name"])
+        clean_name = "".join(c for c in raw_name if c not in ("\r", "\n", "\0", "\t")).strip()[:64]
+        res["name"] = clean_name
     if "id" in rule and rule["id"]:
         res["id"] = str(rule["id"])
     return res

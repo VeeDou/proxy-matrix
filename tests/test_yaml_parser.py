@@ -132,5 +132,24 @@ proxies:
         self.assertEqual(nodes[2]["name"], "Node 3")
 
 
+    def test_trailing_comment_outside_quotes(self):
+        """CRITICAL P3 TEST: Ensure quoted values with trailing comment (#) parse cleanly."""
+        yaml_content = """
+proxies:
+  - name: "Node # 1" # trailing comment
+    type: ss # shadowsocks cipher
+    server: 192.0.2.10 # ip
+    port: 8388 # port
+    password: "pass#word" # comment
+    cipher: aes-128-gcm
+"""
+        nodes = parse_clash_yaml_proxies(yaml_content)
+        self.assertEqual(len(nodes), 1)
+        self.assertEqual(nodes[0]["name"], "Node # 1")
+        self.assertEqual(nodes[0]["type"], "ss")
+        self.assertEqual(nodes[0]["port"], 8388)
+        self.assertEqual(nodes[0]["password"], "pass#word")
+
+
 if __name__ == "__main__":
     unittest.main()

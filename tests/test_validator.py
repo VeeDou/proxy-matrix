@@ -25,14 +25,30 @@ class TestValidator(unittest.TestCase):
             {"type": "IP-CIDR6", "domain": "2001:db8::/32", "target": "REJECT"},
             {"type": "DOMAIN-SUFFIX", "domain": "hk-stream.dev", "target": "@region_hk"},
             {"type": "DOMAIN-SUFFIX", "domain": "netflix.com", "target": "@media", "name": "Custom Netflix", "enabled": False},
+            {"type": "DOMAIN-SUFFIX", "domain": "str-false.com", "target": "@proxy", "enabled": "false"},
+            {"type": "DOMAIN-SUFFIX", "domain": "str-true.com", "target": "@proxy", "enabled": "true"},
+            {
+                "type": "DOMAIN-SUFFIX",
+                "domain": "long-name.com",
+                "target": "@proxy",
+                "name": "A" * 100 + "\n\r\tCleaned",
+                "enabled": True
+            },
         ]
         for item in valid_cases:
             res = validate_site_rule(item)
             self.assertEqual(res["domain"], item["domain"].lower())
             self.assertEqual(res["type"], item["type"].upper())
             if "name" in item:
-                self.assertEqual(res["name"], item["name"])
-            if "enabled" in item:
+                self.assertLessEqual(len(res["name"]), 64)
+                self.assertNotIn("\n", res["name"])
+                self.assertNotIn("\r", res["name"])
+                self.assertNotIn("\t", res["name"])
+            if item.get("domain") == "str-false.com":
+                self.assertIs(res["enabled"], False)
+            elif item.get("domain") == "str-true.com":
+                self.assertIs(res["enabled"], True)
+            elif "enabled" in item:
                 self.assertEqual(res["enabled"], item["enabled"])
 
     def test_reject_injected_site_rules(self):

@@ -16,9 +16,27 @@ import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 
+def strip_yaml_comment(s: str) -> str:
+    """Strip trailing comment # from YAML line while respecting quotes."""
+    in_quote: Optional[str] = None
+    for idx, ch in enumerate(s):
+        if in_quote:
+            if ch == "\\" and in_quote == '"':
+                continue
+            elif ch == in_quote:
+                in_quote = None
+        else:
+            if ch in ('"', "'"):
+                in_quote = ch
+            elif ch == "#":
+                if idx == 0 or s[idx - 1].isspace():
+                    return s[:idx].rstrip()
+    return s
+
+
 def parse_scalar(s: str) -> Any:
     """Parse a single YAML scalar while strictly respecting quotes."""
-    s = s.strip()
+    s = strip_yaml_comment(s).strip()
     if not s:
         return ""
 

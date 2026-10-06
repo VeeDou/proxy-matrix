@@ -9,6 +9,7 @@ Produces complete, fine-grained routing configuration for iOS Shadowrocket:
 Zero third-party dependencies: 100% Python 3 standard library.
 """
 
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -46,16 +47,84 @@ SR_GROUP_NAMES = {
 }
 
 
+@dataclass
+class LossyConversionReport:
+    """Detailed record of dropped, degraded, and transformed routing rules."""
+    total_rules: int = 0
+    emitted_rules: int = 0
+    dropped_rules: List[Dict[str, str]] = field(default_factory=list)
+    converted_rules: List[Dict[str, str]] = field(default_factory=list)
+    policy_notes: List[str] = field(default_factory=list)
+
+    def to_markdown(self) -> str:
+        """Render human-readable Markdown summary of lossy conversions."""
+        lines = [
+            "# Shadowrocket 规则转换与有损降级报告 (Lossy Conversion Report)",
+            "",
+            "本报告记录从 Clash / Mihomo 规则集编译为 iOS Shadowrocket 配置时的降级转换、标签展开与静默丢弃项。",
+            "",
+            "## 1. 规则统计概览",
+            f"- **输入规则总数**: {self.total_rules} 条",
+            f"- **有效生成规则**: {self.emitted_rules} 条",
+            f"- **转换/展开规则**: {len(self.converted_rules)} 条",
+            f"- **静默丢弃规则**: {len(self.dropped_rules)} 条",
+            "",
+            "## 2. 丢弃规则清单 (Dropped Rules)",
+        ]
+        if self.dropped_rules:
+            lines.extend([
+                "| 原始规则 | 目标策略 | 处理原因与替代方案 |",
+                "| :--- | :--- | :--- |",
+            ])
+            for d in self.dropped_rules:
+                lines.append(f"| `{d['rule']}` | `{d['target']}` | {d['reason']} |")
+        else:
+            lines.append("无规则被丢弃。")
+
+        lines.extend([
+            "",
+            "## 3. 降级与展开规则清单 (Converted / Degraded Rules)",
+        ])
+        if self.converted_rules:
+            lines.extend([
+                "| 原始规则 | 转换后规则 | 转换说明 |",
+                "| :--- | :--- | :--- |",
+            ])
+            for c in self.converted_rules:
+                lines.append(f"| `{c['original']}` | `{c['converted']}` | {c['reason']} |")
+        else:
+            lines.append("无规则被转换或降级。")
+
+        lines.extend([
+            "",
+            "## 4. 关键策略差异与安全保障说明",
+        ])
+        for note in self.policy_notes:
+            lines.append(f"- {note}")
+
+        return "\n".join(lines) + "\n"
+
+
 def compile_shadowrocket_conf(
     root_dir: Path,
     custom_sites: Optional[List[Dict[str, Any]]] = None,
-    dns_preset: str = "cn-mainland"
+    dns_preset: str = "cn-mainland",
+    report: Optional[LossyConversionReport] = None,
 ) -> str:
-    """Compile complete shadowrocket.conf INI text."""
+    """Compile complete shadowrocket.conf INI text and optionally record lossy report."""
     config_dir = root_dir / "config"
     rules_dir = root_dir / "rules"
 
     regions = load_regions(config_dir / "regions.json")
+
+    if report is not None:
+        report.policy_notes = [
+            "UDP 旁路防泄露: udp-policy-not-supported-behaviour = REJECT (防止非代理 UDP 直连泄露客户端真实 IP)。",
+            "QUIC 强制拦截: AND,((PROTOCOL,UDP),(DEST-PORT,443)),REJECT (强制 HTTP/3 回退至 TCP TLS，提升分流稳定性)。",
+            "内网绕行兜底: GEOSITE,private 虽未作为单条规则注入，但已在 skip-proxy 与 tun-excluded-routes 全量覆盖。",
+            "国内流量兜底: GEOSITE,cn 丢弃后，由 GEOIP,CN,DIRECT,no-resolve 规则全量兜底。",
+            "策略组类型转换: Clash url-test 自动选优在 Shadowrocket 中编译为带正则过滤的 select 策略组。",
+        ]
 
     # 1. Build [General] section
     dns_servers = "223.5.5.5, 119.29.29.29" if dns_preset == "cn-mainland" else "1.1.1.1, 8.8.8.8"
@@ -86,7 +155,15 @@ def compile_shadowrocket_conf(
     # Custom sites
     if custom_sites:
         for site in custom_sites:
+            if report is not None:
+                report.total_rules += 1
             if not site.get("enabled", True):
+                if report is not None:
+                    report.dropped_rules.append({
+                        "rule": f"{site.get('type', 'DOMAIN-SUFFIX')},{site.get('domain', '')}",
+                        "target": site.get("group") or site.get("target") or "@proxy",
+                        "reason": "规则在控制台被禁用 (enabled: false)",
+                    })
                 continue
             domain = site.get("domain")
             kind = site.get("type", "DOMAIN-SUFFIX")
@@ -96,6 +173,14 @@ def compile_shadowrocket_conf(
             if sr_rule:
                 for line in sr_rule.splitlines():
                     rule_lines.append(line)
+                    if report is not None:
+                        report.emitted_rules += 1
+            elif report is not None:
+                report.dropped_rules.append({
+                    "rule": f"{kind},{domain}",
+                    "target": target_id,
+                    "reason": f"Shadowrocket 不支持 {kind} 规则；已丢弃",
+                })
 
     # Core rules via Rule IR
     rules_file = rules_dir / "rules.json"
@@ -103,11 +188,43 @@ def compile_shadowrocket_conf(
         with open(rules_file, "r", encoding="utf-8") as f:
             raw_rules = json.load(f)
         for r_str in raw_rules:
+            if report is not None:
+                report.total_rules += 1
             rule = parse_rule_string(r_str)
             sr_rule = rule.to_shadowrocket_rule(SR_GROUP_NAMES)
             if sr_rule:
                 for line in sr_rule.splitlines():
                     rule_lines.append(line)
+                    if report is not None:
+                        report.emitted_rules += 1
+                if report is not None:
+                    if rule.type == "GEOSITE" and rule.payload == "google":
+                        report.converted_rules.append({
+                            "original": r_str,
+                            "converted": sr_rule.replace("\n", " / "),
+                            "reason": "Shadowrocket 不支持 GEOSITE 标签；展开为明确的 DOMAIN-SUFFIX 规则",
+                        })
+                    elif r_str.startswith("MATCH,") or r_str.startswith("FINAL,"):
+                        report.converted_rules.append({
+                            "original": r_str,
+                            "converted": sr_rule,
+                            "reason": "Clash MATCH 终态分流转为 Shadowrocket FINAL 指令",
+                        })
+            else:
+                if report is not None:
+                    reason = f"Shadowrocket 不支持 {rule.type} 规则；已丢弃"
+                    if rule.type == "GEOSITE":
+                        if rule.payload == "private":
+                            reason = "Shadowrocket 不支持私有 GEOSITE 标签；已在 skip-proxy 与 tun-excluded-routes 内网绕行中全量兜底"
+                        elif rule.payload == "cn":
+                            reason = "Shadowrocket 不支持 GEOSITE 标签；国内流量已由 GEOIP,CN 规则接管"
+                        else:
+                            reason = f"Shadowrocket 不支持 GEOSITE,{rule.payload} 标签；已丢弃"
+                    report.dropped_rules.append({
+                        "rule": r_str,
+                        "target": rule.target_id,
+                        "reason": reason,
+                    })
 
     # 3. Build [Proxy Group] section dynamically
     group_lines = [

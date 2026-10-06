@@ -20,8 +20,9 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from proxymatrix.sources.fetcher import fetch_all_subscriptions, fetch_subscription
 from proxymatrix.targets.clash import ClashCompiler
-from proxymatrix.targets.shadowrocket_conf import compile_shadowrocket_conf
+from proxymatrix.targets.shadowrocket_conf import LossyConversionReport, compile_shadowrocket_conf
 from proxymatrix.targets.shadowrocket_yaml import compile_shadowrocket_yaml, load_subscription_nodes
 from proxymatrix.utils.redact import redact_text, sanitize_exception
 
@@ -94,13 +95,19 @@ def build_all(
         clash_yaml_text = f"{MARKER}\n" + clash_yaml_text
     clash_output.write_text(clash_yaml_text, encoding="utf-8")
 
-    # 2. Compile Shadowrocket CONF
+    # 2. Compile Shadowrocket CONF and lossy conversion report
+    lossy_report = LossyConversionReport()
     sr_conf_text = compile_shadowrocket_conf(
         root_dir=ROOT,
         custom_sites=sites,
         dns_preset="cn-mainland",
+        report=lossy_report,
     )
     sr_conf_output.write_text(sr_conf_text, encoding="utf-8")
+
+    # Generate lossy conversion report
+    report_output = ROOT / "dist/lossy_conversion_report.md"
+    report_output.write_text(lossy_report.to_markdown(), encoding="utf-8")
 
     # 3. Compile Shadowrocket YAML (Proxies subscription)
     sr_yaml_status = "未生成"
@@ -120,11 +127,13 @@ def build_all(
     print(f"  - Clash Profile:        {clash_output} ({clash_output.stat().st_size} 字节)")
     print(f"  - Shadowrocket Config:  {sr_conf_output} ({sr_conf_output.stat().st_size} 字节)")
     print(f"  - Shadowrocket Proxies: {sr_yaml_status}")
+    print(f"  - Lossy Report:         {report_output} ({len(lossy_report.dropped_rules)} 处丢弃, {len(lossy_report.converted_rules)} 处转换)")
 
     return {
         "clash": clash_output,
         "shadowrocket_conf": sr_conf_output,
         "shadowrocket_yaml": sr_yaml_output,
+        "lossy_report": report_output,
     }
 
 
@@ -211,11 +220,13 @@ def pull_latest() -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="ProxyMatrix: 本地代理配置管理与规则编译器")
-    parser.add_argument("command", choices=["build", "check", "apply", "update", "console"], help="操作指令")
+    parser.add_argument("command", choices=["build", "check", "apply", "update", "fetch", "console"], help="操作指令")
     parser.add_argument("--clash-output", type=Path, default=DEFAULT_CLASH_OUTPUT, help="Clash YAML 输出路径")
     parser.add_argument("--sr-output", type=Path, default=DEFAULT_SR_CONF_OUTPUT, help="Shadowrocket CONF 输出路径")
     parser.add_argument("--core", type=Path, default=DEFAULT_CORE, help="Mihomo 内核路径")
     parser.add_argument("--port", type=int, default=8787, help="Web 管理台端口 (默认: 8787)")
+    parser.add_argument("--timeout", type=int, default=20, help="订阅拉取超时时间 (秒)")
+    parser.add_argument("--airport", type=str, default=None, help="指定单家机场订阅名称")
     parser.add_argument("--no-open", action="store_true", help="不自动打开浏览器")
     args = parser.parse_args()
 
@@ -226,8 +237,39 @@ def main() -> int:
             run_server(port=args.port, auto_open=not args.no_open)
             return 0
 
+        if args.command == "fetch":
+            urls = load_urls()
+            if not urls:
+                print("[!] 未配置任何订阅 URL (subscriptions/urls.json 或 local/urls.json)。")
+                return 1
+            if args.airport:
+                if args.airport not in urls:
+                    print(f"[!] 未找到机场 [{args.airport}]，已配置机场: {list(urls.keys())}")
+                    return 1
+                urls = {args.airport: urls[args.airport]}
+
+            print(f"[*] 开始拉取订阅 ({len(urls)} 家机场)...")
+            res = fetch_all_subscriptions(ROOT, urls=urls, timeout=args.timeout)
+            for name, r in res.get("results", {}).items():
+                if r.get("status") == "success":
+                    print(f"[✓] 订阅 [{name}] 拉取成功: {r.get('nodes')} 个节点 -> {r.get('path')} (权限 0600)")
+                else:
+                    print(f"[!] 订阅 [{name}] 拉取失败: {r.get('error')}")
+
+            if res.get("success", 0) == 0:
+                print("[!] 未能成功拉取到有效节点缓存，终止后续构建。")
+                return 1
+
+            # Rebuild profiles with fresh nodes
+            build_all(args.clash_output, args.sr_output)
+            return 0
+
         if args.command == "update":
             pull_latest()
+            urls = load_urls()
+            if urls:
+                print(f"[*] 正在拉取订阅更新 ({len(urls)} 家机场)...")
+                fetch_all_subscriptions(ROOT, urls=urls, timeout=args.timeout)
 
         # Build profiles
         artifacts = build_all(args.clash_output, args.sr_output)

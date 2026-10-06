@@ -4,6 +4,7 @@ Zero external dependencies: 100% Python 3 standard library.
 All output errors and subscription URLs are sanitized through redact_text.
 """
 
+import base64
 import contextlib
 import http.client
 import json
@@ -19,12 +20,15 @@ import subprocess
 import tempfile
 import time
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 import urllib.error
 import urllib.parse
 import urllib.request
 
+from proxymatrix.targets.clash import dict_to_yaml
 from proxymatrix.utils.redact import redact_text, sanitize_exception
+from proxymatrix.utils.validator import validate_subscription_entry
+from proxymatrix.utils.yaml_parser import parse_clash_yaml_proxies
 
 ACTIVE = set()
 ACTIVE_LOCK = threading.Lock()
@@ -385,6 +389,397 @@ def probe_ai_endpoints(yaml_text: str) -> Dict[str, Any]:
     }
 
 
+def safe_b64decode(s: str) -> Optional[bytes]:
+    """Base64 decode string with padding fix and urlsafe support."""
+    clean = re.sub(r"\s+", "", s)
+    if not clean:
+        return None
+    missing_padding = len(clean) % 4
+    if missing_padding:
+        clean += "=" * (4 - missing_padding)
+    for alt in (None, b"-_"):
+        try:
+            return base64.b64decode(clean, altchars=alt)
+        except Exception:
+            pass
+    try:
+        return base64.urlsafe_b64decode(clean)
+    except Exception:
+        return None
+
+
+def parse_ss_uri(uri: str) -> Optional[Dict[str, Any]]:
+    """Parse Shadowsocks URI into proxy dictionary."""
+    parsed = urllib.parse.urlsplit(uri)
+    name = urllib.parse.unquote(parsed.fragment) if parsed.fragment else "SS Node"
+    netloc = parsed.netloc or parsed.path
+    if "@" in netloc:
+        userinfo, hostport = netloc.split("@", 1)
+        decoded_userinfo = safe_b64decode(userinfo)
+        if decoded_userinfo:
+            try:
+                userinfo = decoded_userinfo.decode("utf-8")
+            except Exception:
+                pass
+        if ":" not in userinfo or ":" not in hostport:
+            return None
+        method, password = userinfo.split(":", 1)
+        server, port_str = hostport.split(":", 1)
+    else:
+        decoded = safe_b64decode(netloc)
+        if not decoded:
+            return None
+        try:
+            s = decoded.decode("utf-8")
+        except Exception:
+            return None
+        if "@" not in s or ":" not in s:
+            return None
+        userinfo, hostport = s.split("@", 1)
+        if ":" not in userinfo or ":" not in hostport:
+            return None
+        method, password = userinfo.split(":", 1)
+        server, port_str = hostport.split(":", 1)
+
+    try:
+        port = int(port_str.split("/")[0])
+    except ValueError:
+        return None
+
+    return {
+        "name": name,
+        "type": "ss",
+        "server": server,
+        "port": port,
+        "cipher": method,
+        "password": password,
+        "udp": True,
+    }
+
+
+def parse_vmess_uri(uri: str) -> Optional[Dict[str, Any]]:
+    """Parse VMess URI into proxy dictionary."""
+    b64_part = uri.removeprefix("vmess://").strip()
+    decoded = safe_b64decode(b64_part)
+    if not decoded:
+        return None
+    try:
+        data = json.loads(decoded.decode("utf-8"))
+    except Exception:
+        return None
+
+    server = str(data.get("add", "")).strip()
+    try:
+        port = int(data.get("port", 443))
+    except (ValueError, TypeError):
+        port = 443
+    uuid = str(data.get("id", "")).strip()
+    if not server or not uuid:
+        return None
+
+    name = str(data.get("ps", f"VMess-{server}:{port}")).strip()
+    alter_id = int(data.get("aid", 0)) if str(data.get("aid", 0)).isdigit() else 0
+    net = str(data.get("net", "tcp")).strip().lower()
+    tls = str(data.get("tls", "")).strip().lower() in ("tls", "true")
+
+    node: Dict[str, Any] = {
+        "name": name,
+        "type": "vmess",
+        "server": server,
+        "port": port,
+        "uuid": uuid,
+        "alterId": alter_id,
+        "cipher": "auto",
+        "tls": tls,
+        "udp": True,
+    }
+    if net == "ws":
+        node["network"] = "ws"
+        ws_opts: Dict[str, Any] = {}
+        if data.get("path"):
+            ws_opts["path"] = str(data["path"])
+        if data.get("host"):
+            ws_opts["headers"] = {"Host": str(data["host"])}
+        if ws_opts:
+            node["ws-opts"] = ws_opts
+    elif net:
+        node["network"] = net
+
+    return node
+
+
+def parse_trojan_uri(uri: str) -> Optional[Dict[str, Any]]:
+    """Parse Trojan URI into proxy dictionary."""
+    parsed = urllib.parse.urlsplit(uri)
+    name = urllib.parse.unquote(parsed.fragment) if parsed.fragment else "Trojan Node"
+    password = parsed.username or ""
+    server = parsed.hostname or ""
+    port = parsed.port or 443
+    if not server or not password:
+        return None
+    query = urllib.parse.parse_qs(parsed.query)
+    sni = query.get("sni", [query.get("peer", [server])[0]])[0]
+
+    return {
+        "name": name,
+        "type": "trojan",
+        "server": server,
+        "port": port,
+        "password": password,
+        "sni": sni,
+        "udp": True,
+    }
+
+
+def parse_vless_uri(uri: str) -> Optional[Dict[str, Any]]:
+    """Parse VLESS URI into proxy dictionary."""
+    parsed = urllib.parse.urlsplit(uri)
+    name = urllib.parse.unquote(parsed.fragment) if parsed.fragment else "VLESS Node"
+    uuid = parsed.username or ""
+    server = parsed.hostname or ""
+    port = parsed.port or 443
+    if not server or not uuid:
+        return None
+    query = urllib.parse.parse_qs(parsed.query)
+    security = query.get("security", ["none"])[0].lower()
+    sni = query.get("sni", [server])[0]
+
+    node: Dict[str, Any] = {
+        "name": name,
+        "type": "vless",
+        "server": server,
+        "port": port,
+        "uuid": uuid,
+        "tls": security in ("tls", "reality"),
+        "udp": True,
+    }
+    if query.get("flow"):
+        node["flow"] = query["flow"][0]
+    if security == "reality":
+        reality_opts: Dict[str, Any] = {"public-key": query.get("pbk", [""])[0]}
+        if query.get("sid"):
+            reality_opts["short-id"] = query["sid"][0]
+        node["reality-opts"] = reality_opts
+        node["servername"] = sni
+    elif security == "tls":
+        node["servername"] = sni
+
+    return node
+
+
+def parse_hysteria2_uri(uri: str) -> Optional[Dict[str, Any]]:
+    """Parse Hysteria2 URI into proxy dictionary."""
+    parsed = urllib.parse.urlsplit(uri)
+    name = urllib.parse.unquote(parsed.fragment) if parsed.fragment else "Hy2 Node"
+    password = parsed.username or ""
+    server = parsed.hostname or ""
+    port = parsed.port or 443
+    if not server or not password:
+        return None
+    query = urllib.parse.parse_qs(parsed.query)
+    sni = query.get("sni", [server])[0]
+
+    return {
+        "name": name,
+        "type": "hysteria2",
+        "server": server,
+        "port": port,
+        "password": password,
+        "sni": sni,
+    }
+
+
+def parse_proxy_uri(uri: str) -> Optional[Dict[str, Any]]:
+    """Parse any supported proxy URI string."""
+    uri_clean = uri.strip()
+    if not uri_clean or uri_clean.startswith("#"):
+        return None
+    if uri_clean.startswith("ss://"):
+        return parse_ss_uri(uri_clean)
+    if uri_clean.startswith("vmess://"):
+        return parse_vmess_uri(uri_clean)
+    if uri_clean.startswith("trojan://"):
+        return parse_trojan_uri(uri_clean)
+    if uri_clean.startswith("vless://"):
+        return parse_vless_uri(uri_clean)
+    if uri_clean.startswith("hysteria2://") or uri_clean.startswith("hy2://"):
+        return parse_hysteria2_uri(uri_clean)
+    return None
+
+
+def parse_subscription_nodes(content_data: Union[bytes, str]) -> List[Dict[str, Any]]:
+    """Parse subscription content from Clash YAML or Base64 URI list."""
+    if isinstance(content_data, bytes):
+        raw_text = content_data.decode("utf-8", errors="ignore")
+    else:
+        raw_text = content_data
+
+    # 1. Try Clash YAML directly
+    if "proxies:" in raw_text or "\n- " in raw_text:
+        proxies = parse_clash_yaml_proxies(raw_text)
+        if proxies:
+            return proxies
+
+    # 2. Try raw URI lines
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    nodes = []
+    for line in lines:
+        node = parse_proxy_uri(line)
+        if node:
+            nodes.append(node)
+    if nodes:
+        return nodes
+
+    # 3. Try Base64 decoding
+    b64_clean = re.sub(r"\s+", "", raw_text)
+    decoded_bytes = safe_b64decode(b64_clean)
+    if decoded_bytes:
+        decoded_text = decoded_bytes.decode("utf-8", errors="ignore")
+        if "proxies:" in decoded_text or "\n- " in decoded_text:
+            proxies = parse_clash_yaml_proxies(decoded_text)
+            if proxies:
+                return proxies
+        lines = [line.strip() for line in decoded_text.splitlines() if line.strip()]
+        for line in lines:
+            node = parse_proxy_uri(line)
+            if node:
+                nodes.append(node)
+        if nodes:
+            return nodes
+
+    return []
+
+
+def save_profile_yaml(profile_path: Path, proxies: List[Dict[str, Any]], provider_name: str = "") -> None:
+    """Atomically save proxies to profiles/<name>.yaml with strict 0600 file permissions."""
+    profile_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = profile_path.parent / f".tmp_{profile_path.name}_{os.getpid()}"
+    content = (
+        f"# managed-by-proxy-matrix - Subscribed profile for {provider_name or profile_path.stem}\n"
+        f"# [REAL SUBSCRIPTION] Generated from verified subscription feed.\n"
+        + dict_to_yaml({"proxies": proxies})
+    )
+    # Enforce strict 0600 file permissions
+    fd = os.open(str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        with open(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(str(tmp_path), str(profile_path))
+        os.chmod(str(profile_path), 0o600)
+    finally:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except Exception:
+                pass
+
+
+def fetch_subscription(name: str, url: str, profiles_dir: Path, timeout: int = 20) -> Dict[str, Any]:
+    """Download subscription, parse nodes, and atomically save to profiles/<name>.yaml (0600).
+
+    All error messages and subscription URLs are sanitized with redact_text to prevent token leaks.
+    """
+    safe_url = redact_text(url)
+    try:
+        validate_subscription_entry(name, url)
+    except Exception as e:
+        clean_err = sanitize_exception(e)
+        return {
+            "name": name,
+            "status": "failed",
+            "error": clean_err,
+            "url": safe_url,
+        }
+
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "ClashVerge/1.7.0 (Mihomo; +https://github.com/VeeDou/proxy-matrix)",
+            "Accept": "*/*",
+        }
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            data = response.read(8388609)
+            if len(data) > 8388608:
+                raise ValueError("订阅内容超过 8MB 安全上限，已停止处理。")
+    except Exception as e:
+        clean_err = redact_text(sanitize_exception(e))
+        return {
+            "name": name,
+            "status": "failed",
+            "error": f"下载订阅失败: {clean_err}",
+            "url": safe_url,
+        }
+
+    nodes = parse_subscription_nodes(data)
+    if not nodes:
+        return {
+            "name": name,
+            "status": "failed",
+            "error": "未能从订阅内容中解析出有效节点 (支持 Clash YAML 与 Base64 URI 节点)",
+            "url": safe_url,
+        }
+
+    profile_path = profiles_dir / f"{name}.yaml"
+    try:
+        save_profile_yaml(profile_path, nodes, provider_name=name)
+    except Exception as e:
+        clean_err = redact_text(sanitize_exception(e))
+        return {
+            "name": name,
+            "status": "failed",
+            "error": f"写入订阅缓存文件失败: {clean_err}",
+            "url": safe_url,
+        }
+
+    return {
+        "name": name,
+        "status": "success",
+        "nodes": len(nodes),
+        "path": profile_path,
+        "url": safe_url,
+    }
+
+
+def fetch_all_subscriptions(
+    root_dir: Path,
+    urls: Optional[Dict[str, str]] = None,
+    timeout: int = 20
+) -> Dict[str, Any]:
+    """Fetch all configured subscriptions into root_dir/profiles/."""
+    profiles_dir = root_dir / "profiles"
+    profiles_dir.mkdir(parents=True, exist_ok=True)
+
+    target_urls = urls
+    if target_urls is None:
+        from manage import load_urls
+        target_urls = load_urls()
+
+    if not target_urls:
+        return {"total": 0, "success": 0, "failed": 0, "results": {}}
+
+    results = {}
+    success_count = 0
+    failed_count = 0
+
+    for name, url in target_urls.items():
+        res = fetch_subscription(name, url, profiles_dir=profiles_dir, timeout=timeout)
+        results[name] = res
+        if res.get("status") == "success":
+            success_count += 1
+        else:
+            failed_count += 1
+
+    return {
+        "total": len(target_urls),
+        "success": success_count,
+        "failed": failed_count,
+        "results": results,
+    }
+
+
 def test_subscription_url(url: str, proxy_mixed_port: Optional[int] = None) -> Dict[str, Any]:
     """Download subscription content safely with size limits and validate proxy nodes."""
     safe_url = redact_text(url)
@@ -417,16 +812,12 @@ def test_subscription_url(url: str, proxy_mixed_port: Optional[int] = None) -> D
             "message": f"无法下载订阅: {redact_text(str(error))}"
         }
 
-    # Count nodes or proxies in the text
-    text = data.decode("utf-8", errors="ignore")
-    # Quick count of proxies in standard YAML or base64
-    count = text.count("name:") or text.count("- name:")
-    if not count and ("proxies:" in text or "proxies" in text):
-        count = len(re.findall(r"-\s*name\s*:", text))
+    nodes = parse_subscription_nodes(data)
+    count = len(nodes)
 
     return {
         "passed": count > 0,
         "http_status": status,
         "nodes": count,
-        "message": f"成功下载并识别到 {count} 个节点。" if count else "文件已成功下载，但未识别到节点；请确认订阅为 Clash/Mihomo 格式。"
+        "message": f"成功下载并识别到 {count} 个节点。" if count else "文件已成功下载，但未识别到节点；请确认订阅为 Clash/Mihomo 格式或 Base64 节点列表。"
     }
