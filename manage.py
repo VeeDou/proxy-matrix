@@ -13,6 +13,7 @@ import datetime
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -218,9 +219,60 @@ def pull_latest() -> bool:
     return False
 
 
+def init_project() -> None:
+    """Initialize ProxyMatrix directory structure, template configs, and distribution tokens."""
+    print("[*] 正在初始化 ProxyMatrix 工作环境...")
+
+    # 1. Ensure essential directories exist with proper permissions
+    dirs = [
+        ROOT / "dist",
+        ROOT / "profiles",
+        ROOT / ".state",
+        ROOT / "local",
+        ROOT / "subscriptions",
+        ROOT / "rules",
+    ]
+    for d in dirs:
+        d.mkdir(parents=True, exist_ok=True)
+
+    try:
+        os.chmod(ROOT / "profiles", 0o700)
+        os.chmod(ROOT / "local", 0o700)
+        os.chmod(ROOT / ".state", 0o700)
+    except Exception:
+        pass
+
+    # 2. Initialize default configurations from examples if absent
+    configs = [
+        ("subscriptions/urls.json", "subscriptions/urls.example.json"),
+        ("rules/sites.json", "rules/sites.example.json"),
+        ("subscriptions/providers.json", "subscriptions/providers.example.json"),
+    ]
+    for target_rel, example_rel in configs:
+        target = ROOT / target_rel
+        example = ROOT / example_rel
+        if not target.exists() and example.exists():
+            shutil.copy2(example, target)
+            print(f"  [+] 已创建初始配置文件: {target_rel} (自 {example_rel})")
+
+    # 3. Generate a recommended 64-hex distribution token
+    token = secrets.token_hex(32)
+    print("\n[✓] 初始化完成！")
+    print(f"  - 订阅缓存目录:   {ROOT / 'profiles'} (权限: 0700)")
+    print(f"  - 客户端产物目录: {ROOT / 'dist'}")
+    print(f"  - 本地私有配置:   {ROOT / 'local'} (已加入 .gitignore，安全隔离)")
+    print(f"\n[推荐安全部署 Token (64-Hex)]:")
+    print(f"  export SECRET_SUBDIR=\"{token}\"")
+    print("\n下一步提示:")
+    print("  1. 在 subscriptions/urls.json 或 local/urls.json 中填入你的机场订阅 URL;")
+    print("  2. 执行 `python3 manage.py fetch` 下载并缓存节点;")
+    print("  3. 执行 `python3 manage.py build` 编译全客户端配置;")
+    print("  4. 或执行 `python3 manage.py console` 启动图形化管理控制台。")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="ProxyMatrix: 本地代理配置管理与规则编译器")
-    parser.add_argument("command", choices=["build", "check", "apply", "update", "fetch", "console"], help="操作指令")
+    parser.add_argument("command", choices=["build", "check", "apply", "update", "fetch", "console", "init"], help="操作指令")
     parser.add_argument("--clash-output", type=Path, default=DEFAULT_CLASH_OUTPUT, help="Clash YAML 输出路径")
     parser.add_argument("--sr-output", type=Path, default=DEFAULT_SR_CONF_OUTPUT, help="Shadowrocket CONF 输出路径")
     parser.add_argument("--core", type=Path, default=DEFAULT_CORE, help="Mihomo 内核路径")
@@ -232,6 +284,10 @@ def main() -> int:
 
     os.umask(0o077)
     try:
+        if args.command == "init":
+            init_project()
+            return 0
+
         if args.command == "console":
             from proxymatrix.web.server import run_server
             run_server(port=args.port, auto_open=not args.no_open)

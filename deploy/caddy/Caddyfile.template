@@ -1,0 +1,32 @@
+# ProxyMatrix Distribution Caddyfile Template (Mode B)
+#
+# Security Features:
+# 1. Automatic HTTPS (Let's Encrypt / ZeroSSL)
+# 2. Strict Token Path Isolation: Only requests with the secret token can access profiles
+# 3. Default 404 on root / invalid paths (stealth mode against scanner probes)
+# 4. Cache-Control: no-store to prevent edge/browser caching of node credentials
+
+{$DOMAIN:sub.example.com} {
+    # Set distribution root directory
+    root * /var/www/profiles
+
+    # Match secret token path
+    @secret path /{$TOKEN:CHANGE_TO_64_HEX_RANDOM_TOKEN}/*
+    handle @secret {
+        file_server {
+            hide .*
+        }
+        header {
+            Cache-Control "no-store, no-cache, must-revalidate"
+            X-Content-Type-Options "nosniff"
+            X-Robots-Tag "noindex, nofollow"
+        }
+    }
+
+    # Default fallback: 404 for all other paths
+    handle {
+        respond "Not Found" 404 {
+            close
+        }
+    }
+}

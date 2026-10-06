@@ -1,0 +1,31 @@
+# ProxyMatrix Distribution Server (Mode B: Self-Hosted Docker + Caddy)
+#
+# Quickstart:
+# 1. Copy deploy/caddy/Caddyfile.template to deploy/docker/Caddyfile
+# 2. Export environment variables:
+#      export DOMAIN="sub.yourdomain.com"
+#      export TOKEN="$(openssl rand -hex 32)"
+# 3. Start Caddy service:
+#      docker compose up -d
+# 4. Synchronize dist artifacts:
+#      export REMOTE_HOST="your-server"
+#      export REMOTE_PATH="/var/www/profiles"
+#      export SECRET_SUBDIR="$TOKEN"
+#      ./scripts/deploy.example.sh
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: proxymatrix-dist
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN:-sub.example.com}
+      - TOKEN=${TOKEN:-change_to_64_hex_token_here}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy_data:/data
+      - ./caddy_config:/config
+      - /var/www/profiles:/var/www/profiles:ro

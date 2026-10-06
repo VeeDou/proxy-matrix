@@ -25,6 +25,13 @@ if [[ ! "${SECRET_SUBDIR}" =~ ^[0-9a-fA-F]{32,64}$ ]]; then
     exit 1
 fi
 
+# Low-entropy protection: Ensure token has at least 8 unique characters (prevent all-zero or repetitive patterns)
+UNIQUE_CHARS=$(echo -n "${SECRET_SUBDIR}" | grep -o . | sort -u | wc -l | tr -d ' ')
+if [[ "${UNIQUE_CHARS}" -lt 8 ]]; then
+    echo "[!] ERROR: SECRET_SUBDIR has suspiciously low entropy (${UNIQUE_CHARS} unique characters). Please use a cryptographically random token (e.g. openssl rand -hex 32)."
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DIST_DIR="$(cd "${SCRIPT_DIR}/../dist" && pwd)"
 TARGET_DIR="${REMOTE_PATH}/${SECRET_SUBDIR}"

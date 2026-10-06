@@ -30,14 +30,24 @@ import urllib.parse
 
 
 def redact_url(url: str) -> str:
-    """Mask sensitive path tokens and parameters in subscription URLs, preserving only scheme and host."""
+    """Mask sensitive path tokens and parameters in subscription URLs, preserving only scheme and host[:port].
+
+    Explicitly strips user credentials (username:password@) and any path/query/fragment tokens.
+    """
     if not isinstance(url, str):
         url = str(url)
     clean = url.strip()
     try:
         parts = urllib.parse.urlsplit(clean)
-        if parts.scheme and parts.netloc:
-            return f"{parts.scheme}://{parts.netloc}/***"
+        if parts.scheme and (parts.hostname or parts.netloc):
+            host = parts.hostname or parts.netloc.split("@")[-1].split(":")[0]
+            if ":" in host and not host.startswith("["):
+                host_str = f"[{host}]"
+            else:
+                host_str = host
+            if parts.port:
+                host_str = f"{host_str}:{parts.port}"
+            return f"{parts.scheme}://{host_str}/***"
         return redact_text(clean)
     except Exception:
         return "***"

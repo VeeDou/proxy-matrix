@@ -54,6 +54,13 @@ class TestFetcher(unittest.TestCase):
         self.assertEqual(node2["cipher"], "aes-256-gcm")
         self.assertEqual(node2["password"], "mypass")
 
+        # 3. SS with SIP003 obfs plugin
+        uri3 = "ss://YWVzLTEyOC1nY206c2VjcmV0@192.0.2.1:8388/?plugin=obfs-local%3Bobfs%3Dhttp%3Bobfs-host%3Dcdn.example.com#SS-Plugin"  # leak-audit: allow test-fixture
+        node3 = parse_ss_uri(uri3)
+        self.assertIsNotNone(node3)
+        self.assertEqual(node3["plugin"], "obfs")
+        self.assertEqual(node3["plugin-opts"], {"mode": "http", "host": "cdn.example.com"})
+
     def test_vmess_uri_parsing(self):
         vmess_data = {
             "v": "2",
@@ -65,6 +72,7 @@ class TestFetcher(unittest.TestCase):
             "net": "ws",
             "path": "/v2ray",
             "host": "sg.example.com",
+            "sni": "sni.example.com",
             "tls": "tls"
         }
         b64_json = base64.b64encode(json.dumps(vmess_data).encode("utf-8")).decode("ascii")
@@ -77,12 +85,13 @@ class TestFetcher(unittest.TestCase):
         self.assertEqual(node["port"], 443)
         self.assertEqual(node["uuid"], "b0000000-0000-0000-0000-000000000001")
         self.assertTrue(node["tls"])
+        self.assertEqual(node["servername"], "sni.example.com")
         self.assertEqual(node["network"], "ws")
         self.assertEqual(node["ws-opts"]["path"], "/v2ray")
         self.assertEqual(node["ws-opts"]["headers"]["Host"], "sg.example.com")
 
     def test_trojan_uri_parsing(self):
-        uri = "trojan://trojanpass@192.0.2.4:443?sni=us.example.com#US-Trojan"  # leak-audit: allow test-fixture
+        uri = "trojan://trojanpass@192.0.2.4:443?sni=us.example.com&allowInsecure=1#US-Trojan"  # leak-audit: allow test-fixture
         node = parse_trojan_uri(uri)
         self.assertIsNotNone(node)
         self.assertEqual(node["name"], "US-Trojan")
@@ -91,6 +100,7 @@ class TestFetcher(unittest.TestCase):
         self.assertEqual(node["port"], 443)
         self.assertEqual(node["password"], "trojanpass")
         self.assertEqual(node["sni"], "us.example.com")
+        self.assertTrue(node["skip-cert-verify"])
 
     def test_vless_uri_parsing(self):
         # VLESS with Reality

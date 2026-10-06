@@ -458,7 +458,30 @@ def parse_ss_uri(uri: str) -> Optional[Dict[str, Any]]:
     if parsed.query:
         q = urllib.parse.parse_qs(parsed.query)
         if "plugin" in q:
-            node["plugin"] = q["plugin"][0].split(";")[0]
+            plugin_str = urllib.parse.unquote(q["plugin"][0])
+            parts = plugin_str.split(";")
+            raw_plugin = parts[0].strip()
+            opts: Dict[str, Any] = {}
+            for item in parts[1:]:
+                if "=" in item:
+                    k, v = item.split("=", 1)
+                    k = k.strip()
+                    v = v.strip()
+                    if k == "obfs":
+                        opts["mode"] = v
+                    elif k == "obfs-host":
+                        opts["host"] = v
+                    else:
+                        opts[k] = v
+                elif item.strip():
+                    opts[item.strip()] = True
+
+            if "obfs" in raw_plugin:
+                node["plugin"] = "obfs"
+            else:
+                node["plugin"] = raw_plugin
+            if opts:
+                node["plugin-opts"] = opts
 
     return node
 
@@ -503,6 +526,12 @@ def parse_vmess_uri(uri: str) -> Optional[Dict[str, Any]]:
         node["alpn"] = [x.strip() for x in str(data["alpn"]).split(",") if x.strip()]
     if data.get("fp"):
         node["client-fingerprint"] = str(data["fp"])
+    if data.get("sni"):
+        node["servername"] = str(data["sni"]).strip()
+    elif tls and data.get("host"):
+        node["servername"] = str(data["host"]).strip()
+    if data.get("scy"):
+        node["cipher"] = str(data["scy"]).strip()
 
     if net == "ws":
         node["network"] = "ws"
@@ -544,6 +573,8 @@ def parse_trojan_uri(uri: str) -> Optional[Dict[str, Any]]:
         "sni": sni,
         "udp": True,
     }
+    if query.get("allowInsecure", ["0"])[0].lower() in ("1", "true") or query.get("insecure", ["0"])[0].lower() in ("1", "true"):
+        node["skip-cert-verify"] = True
     if query.get("alpn"):
         node["alpn"] = [x.strip() for x in query["alpn"][0].split(",") if x.strip()]
     network_type = query.get("type", ["tcp"])[0].lower()

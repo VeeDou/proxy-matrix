@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional
 import manage
 from proxymatrix.sources import fetcher
 from proxymatrix.targets.clash import ClashCompiler
-from proxymatrix.utils.redact import redact_text, sanitize_exception
+from proxymatrix.utils.redact import redact_text, redact_url, sanitize_exception
 from proxymatrix.utils.validator import validate_site_rule, validate_subscription_entry
 
 ROOT = manage.ROOT
@@ -218,7 +218,7 @@ def status() -> Dict[str, Any]:
     except Exception:
         pass
 
-    redacted_urls = {k: redact_text(v) for k, v in item["urls"].items()}
+    redacted_urls = {k: redact_url(v) for k, v in item["urls"].items()}
     sub_token = get_sub_token()
 
     return {
@@ -229,7 +229,7 @@ def status() -> Dict[str, Any]:
             "saved_at": item.get("saved_at"),
         },
         "persisted": {
-            "urls": {k: redact_text(v) for k, v in urls.items()},
+            "urls": {k: redact_url(v) for k, v in urls.items()},
             "sites": sites,
         },
         "live": live,

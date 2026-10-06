@@ -126,11 +126,13 @@ class TestServerSecurity(unittest.TestCase):
             data = json.loads(resp.read().decode("utf-8"))
             self.assertIn("draft", data)
             self.assertIn("persisted", data)
-            # Verify URLs in draft are redacted
+            # Verify URLs in draft and persisted are safely redacted with redact_url
             for k, val in data["draft"]["urls"].items():
-                if "token=" in val:
-                    self.assertIn("token=***", val)
-                    self.assertNotIn("EXAMPLE_TOKEN", val)
+                self.assertNotIn("EXAMPLE_TOKEN", val)
+                self.assertTrue(val.endswith("/***"), f"Expected redacted URL ending in /***, got {val}")
+            for k, val in data["persisted"]["urls"].items():
+                self.assertNotIn("EXAMPLE_TOKEN", val)
+                self.assertTrue(val.endswith("/***"), f"Expected redacted URL ending in /***, got {val}")
 
     def test_save_draft_input_validation(self):
         """Verify save_draft API rejects malformed / injected rules."""

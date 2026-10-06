@@ -101,6 +101,19 @@ class TestValidator(unittest.TestCase):
             with self.assertRaises(ValueError, msg=f"Should reject subscription ({name}, {url})"):
                 validate_subscription_entry(name, url)
 
+    def test_reject_subscription_error_redaction(self):
+        """CRITICAL SECURITY TEST: Ensure invalid scheme error redacts path tokens and userinfo."""
+        bad_url = "ftp://adminuser:supersecretpass@example.com/link/token12345678"  # leak-audit: allow test-fixture
+        try:
+            validate_subscription_entry("TestAirport", bad_url)
+            self.fail("Should have raised ValueError")
+        except ValueError as e:
+            err_msg = str(e)
+            self.assertNotIn("adminuser", err_msg)
+            self.assertNotIn("supersecretpass", err_msg)
+            self.assertNotIn("token12345678", err_msg)
+            self.assertIn("ftp://example.com/***", err_msg)
+
 
 if __name__ == "__main__":
     unittest.main()

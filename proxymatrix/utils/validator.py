@@ -11,6 +11,8 @@ import re
 from typing import Any, Dict, Optional, Set
 import urllib.parse
 
+from proxymatrix.utils.redact import redact_url
+
 ALLOWED_RULE_TYPES: Set[str] = {
     "DOMAIN",
     "DOMAIN-SUFFIX",
@@ -85,7 +87,7 @@ def validate_subscription_entry(name: str, url: str) -> None:
 
     parsed = urllib.parse.urlsplit(url_clean)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        raise ValueError(f"订阅 [{name}] 的 URL 必须是有效的 HTTP/HTTPS 地址: {url}")
+        raise ValueError(f"订阅 [{name}] 的 URL 必须是有效的 HTTP/HTTPS 地址: {redact_url(url)}")
 
 
 def validate_site_rule(rule: Dict[str, Any], config_dir: Optional[Path] = None) -> Dict[str, Any]:
