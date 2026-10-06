@@ -10,69 +10,11 @@ from pathlib import Path
 import re
 from typing import Any, Dict, List, Optional
 from proxymatrix.targets.clash import dict_to_yaml
+from proxymatrix.utils.yaml_parser import parse_clash_yaml_proxies
 
 DEFAULT_EXCLUDE_FILTER = re.compile(
     r'(?i)剩余流量|套餐到期|到期时间|官网|官方网站|重置时间|^Auto\s+[0-9.]+\s*(GB|MB|TB)'
 )
-
-
-def parse_clash_yaml_proxies(yaml_text: str) -> List[Dict[str, Any]]:
-    """Parse proxies list from standard Clash/Mihomo YAML without pyyaml."""
-    lines = yaml_text.splitlines()
-    in_proxies = False
-    proxies: List[Dict[str, Any]] = []
-    current_node: Optional[Dict[str, Any]] = None
-
-    for line in lines:
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-
-        # Check section boundaries
-        if not line.startswith(" ") and not line.startswith("\t"):
-            if stripped.startswith("proxies:"):
-                in_proxies = True
-                continue
-            elif in_proxies and ":" in stripped and not stripped.startswith("-"):
-                in_proxies = False
-                break
-
-        if not in_proxies:
-            continue
-
-        # Inside proxies section
-        if stripped.startswith("-"):
-            if current_node:
-                proxies.append(current_node)
-            current_node = {}
-            item_content = stripped[1:].strip()
-            if ":" in item_content:
-                k, v = item_content.split(":", 1)
-                k = k.strip().strip("'\"")
-                v = v.strip().strip("'\"")
-                if v.lower() == "true":
-                    v = True
-                elif v.lower() == "false":
-                    v = False
-                elif v.isdigit():
-                    v = int(v)
-                current_node[k] = v
-        elif current_node is not None and ":" in stripped:
-            k, v = stripped.split(":", 1)
-            k = k.strip().strip("'\"")
-            v = v.strip().strip("'\"")
-            if v.lower() == "true":
-                v = True
-            elif v.lower() == "false":
-                v = False
-            elif v.isdigit():
-                v = int(v)
-            current_node[k] = v
-
-    if current_node:
-        proxies.append(current_node)
-
-    return proxies
 
 
 def load_proxies_from_file(file_path: Path) -> List[Dict[str, Any]]:
