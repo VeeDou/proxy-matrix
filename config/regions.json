@@ -3,48 +3,48 @@
     "id": "@region_hk",
     "display_name": "🇭🇰 香港节点",
     "keywords": ["香港", "HK", "Hong Kong", "HongKong"],
-    "regex_pattern": "(?:香港|HK|Hong ?Kong|HKT|HKBN)"
+    "regex_pattern": "(?:香港|(?<![A-Za-z])HK(?![A-Za-z])|Hong ?Kong|HKT|HKBN)"
   },
   {
     "id": "@region_jp",
     "display_name": "🇯🇵 日本节点",
     "keywords": ["日本", "JP", "Japan", "东京", "大阪"],
-    "regex_pattern": "(?:日本|JP|Japan|Tokyo|Osaka|东京|大阪)"
+    "regex_pattern": "(?:日本|(?<![A-Za-z])JP(?![A-Za-z])|Japan|Tokyo|Osaka|东京|大阪)"
   },
   {
     "id": "@region_us",
     "display_name": "🇺🇸 美国节点",
     "keywords": ["美国", "US", "USA", "United States", "洛杉矶", "硅谷"],
-    "regex_pattern": "(?:美国|US|USA|United ?States|LA|Los ?Angeles|Silicon ?Valley|西雅图|纽约)"
+    "regex_pattern": "(?:美国|(?<![A-Za-z])(?:US|USA|LA)(?![A-Za-z])|United ?States|Los ?Angeles|Silicon ?Valley|西雅图|纽约)"
   },
   {
     "id": "@region_sg",
     "display_name": "🇸🇬 新加坡节点",
     "keywords": ["新加坡", "SG", "Singapore", "狮城"],
-    "regex_pattern": "(?:新加坡|SG|Singapore|狮城)"
+    "regex_pattern": "(?:新加坡|(?<![A-Za-z])SG(?![A-Za-z])|Singapore|狮城)"
   },
   {
     "id": "@region_tw",
     "display_name": "🇹🇼 台湾节点",
     "keywords": ["台湾", "TW", "Taiwan", "台北"],
-    "regex_pattern": "(?:台湾|TW|Taiwan|Taipei|台北|新北|台中)"
+    "regex_pattern": "(?:台湾|(?<![A-Za-z])TW(?![A-Za-z])|Taiwan|Taipei|台北|新北|台中)"
   },
   {
     "id": "@region_kr",
     "display_name": "🇰🇷 韩国节点",
     "keywords": ["韩国", "KR", "Korea", "首尔"],
-    "regex_pattern": "(?:韩国|KR|Korea|Seoul|首尔)"
+    "regex_pattern": "(?:韩国|(?<![A-Za-z])KR(?![A-Za-z])|Korea|Seoul|首尔)"
   },
   {
     "id": "@region_uk",
     "display_name": "🇬🇧 英国节点",
     "keywords": ["英国", "UK", "London", "伦敦"],
-    "regex_pattern": "(?:英国|UK|United ?Kingdom|London|伦敦)"
+    "regex_pattern": "(?:英国|(?<![A-Za-z])UK(?![A-Za-z])|United ?Kingdom|London|伦敦)"
   },
   {
     "id": "@region_de",
     "display_name": "🇩🇪 德国节点",
     "keywords": ["德国", "DE", "Germany", "法兰克福"],
-    "regex_pattern": "(?:德国|DE|Germany|Frankfurt|法兰克福)"
+    "regex_pattern": "(?:德国|(?<![A-Za-z])DE(?![A-Za-z])|Germany|Frankfurt|法兰克福)"
   }
 ]

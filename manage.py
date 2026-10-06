@@ -129,9 +129,12 @@ def build_all(
 def validate_with_core(profile_path: Path, core_path: Path = DEFAULT_CORE) -> bool:
     """Validate generated YAML profile with local Clash Verge / Mihomo kernel if installed."""
     if not core_path.is_file():
-        # Core not installed on system; warn user and skip kernel syntax check
-        print(f"[!] 未检测到本地 Mihomo / Clash Verge 内核 ({core_path})，跳过内核语法校验。")
-        return True
+        in_path = shutil.which(str(core_path.name)) or shutil.which("verge-mihomo") or shutil.which("mihomo")
+        if in_path:
+            core_path = Path(in_path)
+        else:
+            print(f"[!] 警告: 未检测到本地 Mihomo / Clash Verge 内核 ({core_path})，跳过内核语法校验。")
+            return False
 
     print(f"[*] 正在调用本地内核进行语法校验: {core_path.name}...")
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -228,7 +231,10 @@ def main() -> int:
 
         # Check syntax
         if args.command in ("check", "apply", "update"):
-            validate_with_core(artifacts["clash"], args.core)
+            core_ok = validate_with_core(artifacts["clash"], args.core)
+            if not core_ok and args.command == "check":
+                print("[!] 检查未完成: 未检测到可用内核，未执行语义校验。", file=sys.stderr)
+                return 2
 
         # Apply to local client
         if args.command in ("apply", "update"):

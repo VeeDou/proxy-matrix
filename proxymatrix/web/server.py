@@ -27,6 +27,7 @@ import manage
 from proxymatrix.sources import fetcher
 from proxymatrix.targets.clash import ClashCompiler
 from proxymatrix.utils.redact import redact_text, sanitize_exception
+from proxymatrix.utils.validator import validate_site_rule, validate_subscription_entry
 
 ROOT = manage.ROOT
 ADMIN = ROOT / ".state/admin"
@@ -164,15 +165,9 @@ def save_draft(data: Dict[str, Any]) -> Dict[str, Any]:
             raise ValueError("网站规则列表格式错误。")
         normalized = []
         for index, item in enumerate(sites):
-            if not isinstance(item, dict):
-                raise ValueError(f"第 {index + 1} 条规则格式错误。")
-            item = dict(item)
-            kind = item.get("type", "DOMAIN-SUFFIX")
-            domain = fetcher.normalize_domain(item.get("domain", ""))
-            item["domain"] = domain
-            item["type"] = kind
-            item.setdefault("id", uuid.uuid4().hex)
-            normalized.append(item)
+            validated = validate_site_rule(item)
+            validated.setdefault("id", uuid.uuid4().hex)
+            normalized.append(validated)
         current["sites"] = normalized
 
     if "url_changes" in data:
@@ -180,8 +175,7 @@ def save_draft(data: Dict[str, Any]) -> Dict[str, Any]:
         if not isinstance(url_changes, dict):
             raise ValueError("订阅地址格式错误。")
         for name, url in url_changes.items():
-            if not isinstance(url, str) or not url.strip():
-                raise ValueError(f"订阅 [{name}] 地址不能为空。")
+            validate_subscription_entry(name, url)
             current["urls"][name] = url.strip()
 
     if "delete_subscription" in data:
@@ -378,7 +372,7 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         cookie = SimpleCookie()
         try:
             cookie.load(cookie_header)
-            val = cookie.get("proxymatrix_session") or cookie.get("clash_toolkit_session")
+            val = cookie.get("proxymatrix_session")
             if val and secrets.compare_digest(val.value, SESSION):
                 return True
         except Exception:

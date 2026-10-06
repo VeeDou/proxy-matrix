@@ -77,6 +77,26 @@ class TestModel(unittest.TestCase):
         self.assertTrue(us_region.matches("US Silicon Valley"))
         self.assertFalse(us_region.matches("SG Cloud 01"))
 
+    def test_region_word_boundary_exclusion(self):
+        """CRITICAL P2-2 TEST: Ensure word boundaries prevent misclassifying non-US/DE nodes."""
+        regions = load_regions(REPO_ROOT / "config/regions.json")
+        us_region = next((r for r in regions if r.id == "@region_us"), None)
+        de_region = next((r for r in regions if r.id == "@region_de"), None)
+
+        self.assertIsNotNone(us_region)
+        self.assertIsNotNone(de_region)
+
+        # Non-US nodes containing 'US' or 'LA' as substrings
+        self.assertFalse(us_region.matches("🇷🇺 RUS-Moscow-01"), "Russia MUST NOT match US")
+        self.assertFalse(us_region.matches("🇦🇺 AUS-Sydney-01"), "Australia MUST NOT match US")
+        self.assertFalse(us_region.matches("Special-Plan-01"), "PLAN MUST NOT match LA")
+        self.assertFalse(us_region.matches("BLA-Node-01"), "BLA MUST NOT match LA")
+
+        # Non-DE nodes containing 'DE' as substring
+        self.assertFalse(de_region.matches("Node-01"), "Node MUST NOT match DE")
+        self.assertFalse(de_region.matches("Order-BGP"), "Order MUST NOT match DE")
+        self.assertFalse(de_region.matches("Model-A"), "Model MUST NOT match DE")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -130,7 +130,7 @@ dns:
     url: "http://cp.cloudflare.com/generate_204"
     interval: 300
     tolerance: 50
-    filter: "(?:香港|HK|Hong ?Kong|HKT|HKBN)"
+    filter: "(?:香港|(?<![A-Za-z])HK(?![A-Za-z])|Hong ?Kong|HKT|HKBN)"
     "empty-fallback": "REJECT"
     use:
       - "主力机场"
@@ -141,7 +141,7 @@ dns:
     url: "http://cp.cloudflare.com/generate_204"
     interval: 300
     tolerance: 50
-    filter: "(?:日本|JP|Japan|Tokyo|Osaka|东京|大阪)"
+    filter: "(?:日本|(?<![A-Za-z])JP(?![A-Za-z])|Japan|Tokyo|Osaka|东京|大阪)"
     "empty-fallback": "REJECT"
     use:
       - "主力机场"
@@ -152,7 +152,7 @@ dns:
     url: "http://cp.cloudflare.com/generate_204"
     interval: 300
     tolerance: 50
-    filter: "(?:美国|US|USA|United ?States|LA|Los ?Angeles|Silicon ?Valley|西雅图|纽约)"
+    filter: "(?:美国|(?<![A-Za-z])(?:US|USA|LA)(?![A-Za-z])|United ?States|Los ?Angeles|Silicon ?Valley|西雅图|纽约)"
     "empty-fallback": "REJECT"
     use:
       - "主力机场"
@@ -163,7 +163,7 @@ dns:
     url: "http://cp.cloudflare.com/generate_204"
     interval: 300
     tolerance: 50
-    filter: "(?:新加坡|SG|Singapore|狮城)"
+    filter: "(?:新加坡|(?<![A-Za-z])SG(?![A-Za-z])|Singapore|狮城)"
     "empty-fallback": "REJECT"
     use:
       - "主力机场"
@@ -174,7 +174,7 @@ dns:
     url: "http://cp.cloudflare.com/generate_204"
     interval: 300
     tolerance: 50
-    filter: "(?:台湾|TW|Taiwan|Taipei|台北|新北|台中)"
+    filter: "(?:台湾|(?<![A-Za-z])TW(?![A-Za-z])|Taiwan|Taipei|台北|新北|台中)"
     "empty-fallback": "REJECT"
     use:
       - "主力机场"
@@ -185,7 +185,7 @@ dns:
     url: "http://cp.cloudflare.com/generate_204"
     interval: 300
     tolerance: 50
-    filter: "(?:韩国|KR|Korea|Seoul|首尔)"
+    filter: "(?:韩国|(?<![A-Za-z])KR(?![A-Za-z])|Korea|Seoul|首尔)"
     "empty-fallback": "REJECT"
     use:
       - "主力机场"
@@ -196,7 +196,7 @@ dns:
     url: "http://cp.cloudflare.com/generate_204"
     interval: 300
     tolerance: 50
-    filter: "(?:英国|UK|United ?Kingdom|London|伦敦)"
+    filter: "(?:英国|(?<![A-Za-z])UK(?![A-Za-z])|United ?Kingdom|London|伦敦)"
     "empty-fallback": "REJECT"
     use:
       - "主力机场"
@@ -207,7 +207,7 @@ dns:
     url: "http://cp.cloudflare.com/generate_204"
     interval: 300
     tolerance: 50
-    filter: "(?:德国|DE|Germany|Frankfurt|法兰克福)"
+    filter: "(?:德国|(?<![A-Za-z])DE(?![A-Za-z])|Germany|Frankfurt|法兰克福)"
     "empty-fallback": "REJECT"
     use:
       - "主力机场"
