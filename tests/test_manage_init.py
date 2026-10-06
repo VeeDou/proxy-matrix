@@ -40,6 +40,17 @@ class TestManageInit(unittest.TestCase):
                 if urls_file.is_file():
                     mode_urls = stat.S_IMODE(urls_file.stat().st_mode)
                     self.assertEqual(mode_urls, 0o600)
+
+                # Run init again without rotate_token -> must preserve same token (N-a)
+                manage.init_project(rotate_token=False)
+                tok_after = deploy_token_file.read_text(encoding="utf-8").strip()
+                self.assertEqual(tok, tok_after)
+
+                # Run init with rotate_token=True -> must generate new token
+                manage.init_project(rotate_token=True)
+                tok_rotated = deploy_token_file.read_text(encoding="utf-8").strip()
+                self.assertNotEqual(tok, tok_rotated)
+                self.assertEqual(len(tok_rotated), 64)
             finally:
                 manage.ROOT = orig_root
 

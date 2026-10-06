@@ -239,13 +239,18 @@ def compile_shadowrocket_conf(
                     })
 
     # 3. Build [Proxy Group] section dynamically
+    region_map = {r.id: r.regex_pattern.replace("=", "") for r in regions}
+    ai_regex = "|".join([region_map[rid] for rid in ("@region_us", "@region_jp", "@region_sg") if rid in region_map])
+    google_regex = "|".join([region_map[rid] for rid in ("@region_us", "@region_hk", "@region_jp") if rid in region_map])
+    media_regex = "|".join([region_map[rid] for rid in ("@region_hk", "@region_tw", "@region_jp", "@region_sg", "@region_us") if rid in region_map])
+
     group_lines = [
         "",
         "[Proxy Group]",
         "# Built-in Service Groups",
-        'AI Services = select, include-all-proxies=true, policy-regex-filter=(?:美国|US|USA|日本|JP|新加坡|SG)',
-        'Google Services = select, include-all-proxies=true, policy-regex-filter=(?:美国|US|USA|日本|JP|香港|HK)',
-        'Streaming Media = select, include-all-proxies=true, policy-regex-filter=(?:香港|HK|台湾|TW|日本|JP|新加坡|SG)',
+        f'AI Services = select, include-all-proxies=true, policy-regex-filter={ai_regex}',
+        f'Google Services = select, include-all-proxies=true, policy-regex-filter={google_regex}',
+        f'Streaming Media = select, include-all-proxies=true, policy-regex-filter={media_regex}',
         "",
         "# Dynamic Region Groups",
     ]

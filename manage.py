@@ -223,7 +223,7 @@ def pull_latest() -> bool:
     return False
 
 
-def init_project() -> None:
+def init_project(rotate_token: bool = False) -> None:
     """Initialize ProxyMatrix directory structure, template configs, and distribution tokens."""
     print("[*] 正在初始化 ProxyMatrix 工作环境...")
 
@@ -234,7 +234,7 @@ def init_project() -> None:
         ROOT / ".state",
         ROOT / "local",
         ROOT / "subscriptions",
-        ROOT / "rules",
+        rules_dir := ROOT / "rules",
     ]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
@@ -268,14 +268,19 @@ def init_project() -> None:
             except Exception:
                 pass
 
-    # 3. Generate a recommended 64-hex distribution token and save to .state/deploy_token (0600)
-    token = secrets.token_hex(32)
+    # 3. Generate or preserve 64-hex distribution token in .state/deploy_token (0600)
     deploy_token_file = ROOT / ".state/deploy_token"
-    deploy_token_file.write_text(token + "\n", encoding="utf-8")
-    try:
-        os.chmod(deploy_token_file, 0o600)
-    except Exception:
-        pass
+    if deploy_token_file.is_file() and not rotate_token:
+        print(f"  [*] 沿用现有部署 Token (未重新生成)")
+    else:
+        token = secrets.token_hex(32)
+        deploy_token_file.write_text(token + "\n", encoding="utf-8")
+        try:
+            os.chmod(deploy_token_file, 0o600)
+        except Exception:
+            pass
+        if rotate_token:
+            print("  [+] 已成功轮换生成新的部署 Token。")
 
     # 4. Enable git pre-commit hook if in git repository
     hooks_enabled = False
@@ -315,13 +320,14 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8787, help="Web 管理台端口 (默认: 8787)")
     parser.add_argument("--timeout", type=int, default=20, help="订阅拉取超时时间 (秒)")
     parser.add_argument("--airport", type=str, default=None, help="指定单家机场订阅名称")
+    parser.add_argument("--rotate-token", action="store_true", help="强制生成并轮换新的部署 Token")
     parser.add_argument("--no-open", action="store_true", help="不自动打开浏览器")
     args = parser.parse_args()
 
     os.umask(0o077)
     try:
         if args.command == "init":
-            init_project()
+            init_project(rotate_token=args.rotate_token)
             return 0
 
         if args.command == "console":
