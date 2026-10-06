@@ -1,0 +1,12 @@
+# Canary test corpus for ProxyMatrix leak scanner
+# Each line below triggers a specific leak rule
+
+CANARY_HEX64=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+CANARY_PUBLIC_IP=93.184.216.34
+CANARY_AWS_AK=AKIAIOSFODNN7EXAMPLE
+CANARY_ALIYUN_AK=LTAI4G1234567890abcdefgh
+CANARY_URL_TOKEN=https://example.com/sub?token=1234567890abcdef1234567890abcdef
+CANARY_SCHEME=vless://uuid-test@example.com:443?type=tcp&security=reality
+CANARY_PATH=/Users/testuser/secret/path
+CANARY_EXEMPTED_HEX=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef # leak-audit: allow canary-exemption
+CANARY_ALLOWED_GOOGLE=https://antigravity.google/api/v1
