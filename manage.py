@@ -103,14 +103,21 @@ def build_all(
     sr_conf_output.write_text(sr_conf_text, encoding="utf-8")
 
     # 3. Compile Shadowrocket YAML (Proxies subscription)
-    nodes_by_prov = load_subscription_nodes(ROOT, urls)
-    sr_yaml_text = compile_shadowrocket_yaml(nodes_by_prov)
-    sr_yaml_output.write_text(sr_yaml_text, encoding="utf-8")
+    sr_yaml_status = "未生成"
+    try:
+        nodes_by_prov, is_sample = load_subscription_nodes(ROOT, urls)
+        sr_yaml_text = compile_shadowrocket_yaml(nodes_by_prov, is_sample=is_sample)
+        sr_yaml_output.write_text(sr_yaml_text, encoding="utf-8")
+        mode_str = "示例离线节点" if is_sample else "真实订阅节点"
+        sr_yaml_status = f"{sr_yaml_output} ({sr_yaml_output.stat().st_size} 字节, {mode_str})"
+    except FileNotFoundError as e:
+        print(f"[!] 提示: 跳过构建 shadowrocket.yaml: {e}")
+        sr_yaml_status = "[跳过] 本地 profiles/ 缺少真实订阅缓存"
 
-    print(f"[✓] 构建完成 (共 3 份目标产物):")
+    print(f"[✓] 构建完成:")
     print(f"  - Clash Profile:        {clash_output} ({clash_output.stat().st_size} 字节)")
     print(f"  - Shadowrocket Config:  {sr_conf_output} ({sr_conf_output.stat().st_size} 字节)")
-    print(f"  - Shadowrocket Proxies: {sr_yaml_output} ({sr_yaml_output.stat().st_size} 字节)")
+    print(f"  - Shadowrocket Proxies: {sr_yaml_status}")
 
     return {
         "clash": clash_output,

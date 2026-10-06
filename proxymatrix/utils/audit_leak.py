@@ -116,10 +116,13 @@ def scan_line(
     allows = private_allowlist or []
 
     # 1. Tier 2: Check Private Denylist FIRST (NEVER bypassed by inline comments!)
+    # Mask allowed negative pattern substrings first so they only exempt their exact occurrences
+    sanitized_line_lower = line.lower()
+    for allow in allows:
+        sanitized_line_lower = sanitized_line_lower.replace(allow.lower(), " " * len(allow))
+
     for item in private_denylist:
-        if item.lower() in line.lower():
-            if any(allow.lower() in line.lower() for allow in allows):
-                continue
+        if item.lower() in sanitized_line_lower:
             findings.append(LeakFinding(filename, line_number, "PRIVATE_DENYLIST", item))
 
     # Inline exemptions ONLY apply to Tier 1 generic heuristics
@@ -176,18 +179,17 @@ def scan_file(
     allows = private_allowlist or []
 
     # Check filename itself against denylist
+    sanitized_name_lower = filepath.name.lower()
+    for allow in allows:
+        sanitized_name_lower = sanitized_name_lower.replace(allow.lower(), " " * len(allow))
     for item in private_denylist:
-        if item.lower() in filepath.name.lower():
-            if not any(allow.lower() in filepath.name.lower() for allow in allows):
-                findings.append(LeakFinding(filename_str, 0, "FILENAME_DENYLIST", item))
+        if item.lower() in sanitized_name_lower:
+            findings.append(LeakFinding(filename_str, 0, "FILENAME_DENYLIST", item))
 
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, "r", encoding="utf-8", errors="replace") as f:
             for idx, line in enumerate(f, start=1):
                 findings.extend(scan_line(line, idx, filename_str, private_denylist, allows))
-    except UnicodeDecodeError:
-        # Expected for non-text / binary files that passed the extension filter
-        pass
     except Exception as e:
         raise RuntimeError(f"Failed to scan file '{filepath}': {e}") from e
 
@@ -246,10 +248,12 @@ def scan_git_history(
             stderr=subprocess.PIPE
         )
         for line in authors.splitlines():
+            sanitized_line_lower = line.lower()
+            for a in allows:
+                sanitized_line_lower = sanitized_line_lower.replace(a.lower(), " " * len(a))
             for item in private_denylist:
-                if item.lower() in line.lower():
-                    if not any(a.lower() in line.lower() for a in allows):
-                        findings.append(LeakFinding("git-metadata", 0, "AUTHOR_METADATA_LEAK", item))
+                if item.lower() in sanitized_line_lower:
+                    findings.append(LeakFinding("git-metadata", 0, "AUTHOR_METADATA_LEAK", item))
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Git author scan failed: {e.stderr}") from e
 
@@ -261,10 +265,12 @@ def scan_git_history(
             stderr=subprocess.PIPE
         )
         for idx, line in enumerate(commit_msgs.splitlines(), start=1):
+            sanitized_line_lower = line.lower()
+            for a in allows:
+                sanitized_line_lower = sanitized_line_lower.replace(a.lower(), " " * len(a))
             for item in private_denylist:
-                if item.lower() in line.lower():
-                    if not any(a.lower() in line.lower() for a in allows):
-                        findings.append(LeakFinding("git-commit-message", idx, "COMMIT_MSG_LEAK", item))
+                if item.lower() in sanitized_line_lower:
+                    findings.append(LeakFinding("git-commit-message", idx, "COMMIT_MSG_LEAK", item))
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Git commit message scan failed: {e.stderr}") from e
 

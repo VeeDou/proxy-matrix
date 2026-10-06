@@ -27,7 +27,7 @@ with community configuration conventions established across the proxy ecosystem:
    - Compatibility: General domain categorization conventions for AI services, streaming media,
      and domestic bypassing. All rule entries in this repository are independently compiled domain strings.
 
-4. MetaCubeX / Mihomo
+3. MetaCubeX / Mihomo
    - Repository: https://github.com/MetaCubeX/mihomo
    - License: GNU General Public License v3.0 (GPL-3.0)
    - Usage: Target configuration syntax and kernel runtime compatibility standards.

@@ -118,7 +118,10 @@ def filter_and_format_proxies(
     return formatted
 
 
-def compile_shadowrocket_yaml(nodes_by_provider: Dict[str, List[Dict[str, Any]]]) -> str:
+def compile_shadowrocket_yaml(
+    nodes_by_provider: Dict[str, List[Dict[str, Any]]],
+    is_sample: bool = False
+) -> str:
     """Compile grouped nodes into a single clean proxies YAML."""
     all_proxies = []
 
@@ -130,17 +133,35 @@ def compile_shadowrocket_yaml(nodes_by_provider: Dict[str, List[Dict[str, Any]]]
         "proxies": all_proxies
     }
 
-    header = "# managed-by-proxy-matrix - Shadowrocket Node Subscription\n"
+    if is_sample:
+        header = (
+            "# managed-by-proxy-matrix - Shadowrocket Node Subscription\n"
+            "# [WARNING: DEMO MODE] This file contains sample offline nodes for demonstration only.\n"
+            "# Configure real subscription URLs in local/urls.json and run 'python3 manage.py update' to generate real nodes.\n"
+        )
+    else:
+        header = (
+            "# managed-by-proxy-matrix - Shadowrocket Node Subscription\n"
+            "# [REAL SUBSCRIPTION] Generated from verified local subscription cache.\n"
+        )
     return header + dict_to_yaml(output_dict)
 
 
 def load_subscription_nodes(
     root_dir: Path,
-    urls: Optional[Dict[str, str]] = None
-) -> Dict[str, List[Dict[str, Any]]]:
-    """Load proxy nodes from cached profiles or fallback fixture."""
-    nodes_by_provider: Dict[str, List[Dict[str, Any]]] = {}
+    urls: Optional[Dict[str, str]] = None,
+    allow_sample_fallback: bool = False
+) -> Tuple[Dict[str, List[Dict[str, Any]]], bool]:
+    """Load proxy nodes from cached profiles or fallback fixture.
 
+    Returns:
+        Tuple of (nodes_by_provider, is_sample)
+
+    Raises:
+        FileNotFoundError: If subscriptions are configured but no cached profile exists,
+                           unless allow_sample_fallback=True is explicitly passed.
+    """
+    nodes_by_provider: Dict[str, List[Dict[str, Any]]] = {}
     target_urls = urls or {}
     profiles_dir = root_dir / "profiles"
 
@@ -152,15 +173,28 @@ def load_subscription_nodes(
             if parsed:
                 nodes_by_provider[name] = parsed
 
-    # If no local profiles exist yet, load from sample subscription fixture
-    if not nodes_by_provider:
+    if target_urls:
+        if nodes_by_provider:
+            return nodes_by_provider, False
+
+        # Configured real subscriptions, but no local profile cache exists
+        if not allow_sample_fallback:
+            missing_names = list(target_urls.keys())
+            raise FileNotFoundError(
+                f"未找到订阅缓存文件 (预期位置: {profiles_dir}/<机场名>.yaml)。"
+                f"已配置真实订阅 ({missing_names})，但本地尚无节点缓存。"
+                f"请先运行 'python3 manage.py update' 拉取真实节点缓存，或清空订阅 URL 进入示例演示模式。"
+            )
+
+        # Explicit test / offline fallback allowed
         fixture_path = root_dir / "subscriptions/sample_subscription.yaml"
         sample_nodes = load_proxies_from_file(fixture_path)
-        # Divide or assign to providers
-        if target_urls:
-            for name in target_urls.keys():
-                nodes_by_provider[name] = list(sample_nodes)
-        else:
-            nodes_by_provider["SampleAirport"] = sample_nodes
+        for name in target_urls.keys():
+            nodes_by_provider[name] = list(sample_nodes)
+        return nodes_by_provider, True
 
-    return nodes_by_provider
+    # Pure sample demo mode (no URLs configured)
+    fixture_path = root_dir / "subscriptions/sample_subscription.yaml"
+    sample_nodes = load_proxies_from_file(fixture_path)
+    nodes_by_provider["SampleAirport"] = sample_nodes
+    return nodes_by_provider, True

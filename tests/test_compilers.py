@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -87,13 +88,25 @@ class TestCompilers(unittest.TestCase):
 
     def test_shadowrocket_yaml_compiler_output(self):
         """Verify Shadowrocket proxies YAML output properly formats and disambiguates nodes."""
-        nodes = load_subscription_nodes(REPO_ROOT, self.sample_urls)
-        yaml_text = compile_shadowrocket_yaml(nodes)
+        # 1. Configured URLs without cache raises FileNotFoundError unless fallback explicitly requested
+        with self.assertRaises(FileNotFoundError):
+            load_subscription_nodes(REPO_ROOT, self.sample_urls, allow_sample_fallback=False)
 
+        # 2. Configured URLs with explicit fallback allowed
+        nodes, is_sample = load_subscription_nodes(REPO_ROOT, self.sample_urls, allow_sample_fallback=True)
+        self.assertTrue(is_sample)
+        yaml_text = compile_shadowrocket_yaml(nodes, is_sample=is_sample)
+
+        self.assertIn("[WARNING: DEMO MODE]", yaml_text)
         self.assertIn("proxies:", yaml_text)
         self.assertIn("[Airport-A] 🇭🇰 香港 BGP 01", yaml_text)
         self.assertIn("[Airport-A] 🇯🇵 东京 CN2 01", yaml_text)
         self.assertIn("[Airport-B] 🇸🇬 新加坡 01", yaml_text)
+
+        # 3. Pure demo mode (no URLs configured)
+        demo_nodes, demo_sample = load_subscription_nodes(REPO_ROOT, urls={})
+        self.assertTrue(demo_sample)
+        self.assertIn("SampleAirport", demo_nodes)
 
     def test_shadowrocket_yaml_filtering_and_deduplication(self):
         """Verify traffic info nodes are excluded and duplicate names are disambiguated."""
@@ -140,9 +153,23 @@ class TestCompilers(unittest.TestCase):
         golden_file = REPO_ROOT / "tests/fixtures/golden/golden_shadowrocket.yaml"
         self.assertTrue(golden_file.is_file(), "Golden Shadowrocket YAML fixture must exist")
         expected = golden_file.read_text(encoding="utf-8")
-        nodes = load_subscription_nodes(REPO_ROOT, manage.load_urls())
-        actual = compile_shadowrocket_yaml(nodes)
+        nodes, is_sample = load_subscription_nodes(REPO_ROOT, manage.load_urls(), allow_sample_fallback=True)
+        actual = compile_shadowrocket_yaml(nodes, is_sample=is_sample)
         self.assertEqual(actual, expected)
+
+    @unittest.skipUnless(
+        shutil.which("verge-mihomo") or Path("/Applications/Clash Verge.app/Contents/MacOS/verge-mihomo").is_file(),
+        "Mihomo / Clash Verge core not installed on system"
+    )
+    def test_golden_clash_syntax_with_mihomo_core(self):
+        """Validate golden Clash configuration directly with real local verge-mihomo core."""
+        core_path = shutil.which("verge-mihomo") or "/Applications/Clash Verge.app/Contents/MacOS/verge-mihomo"
+        golden_file = REPO_ROOT / "tests/fixtures/golden/golden_clash.yaml"
+        with tempfile.TemporaryDirectory() as td:
+            res = subprocess.run([str(core_path), "-t", "-f", str(golden_file), "-d", td], capture_output=True, text=True)
+            self.assertEqual(res.returncode, 0, f"Mihomo validation error:\n{res.stdout}\n{res.stderr}")
+            self.assertIn("test is successful", res.stdout + res.stderr)
+
 
     def test_yaml_boundary_cases(self):
         """Verify YAML serializer handles regex backslashes, short-id, numeric strings, and wildcard keys."""

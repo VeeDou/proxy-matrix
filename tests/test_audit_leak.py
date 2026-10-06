@@ -57,6 +57,16 @@ class TestAuditLeak(unittest.TestCase):
         findings_ok = scan_line(line_ok, 1, "test.py", ["canary-brand"], ["canary-brand.com"])
         self.assertEqual(len(findings_ok), 0)
 
+    def test_localized_allow_does_not_suppress_other_leaks_on_same_line(self):
+        """CRITICAL R3 TEST: Ensure allow pattern only exempts its exact match and does not suppress other leaks on the same line."""
+        line_mixed = 'url = "https://canary-brand.com/api"; secret = "private-domain.internal"'
+        denylist = ["canary-brand", "private-domain.internal"]
+        allowlist = ["canary-brand.com"]
+
+        findings = scan_line(line_mixed, 1, "test.py", denylist, allowlist)
+        self.assertEqual(len(findings), 1, "Only allowed pattern must be suppressed; other leaks on the line MUST be detected")
+        self.assertEqual(findings[0].matched_text, "private-domain.internal")
+
     def test_canary_detection_rate_100_percent(self):
         """Verify that every canary category is detected, and Tier 1 exemptions work."""
         denylist = ["testuser", "canarybrand"]  # leak-audit: allow test-denylist
