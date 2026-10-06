@@ -1,0 +1,20 @@
+{
+  "主力机场": {
+    "type": "http",
+    "interval": 86400,
+    "health-check": {
+      "enable": true,
+      "url": "http://cp.cloudflare.com/generate_204",
+      "interval": 300
+    }
+  },
+  "备用机场": {
+    "type": "http",
+    "interval": 86400,
+    "health-check": {
+      "enable": true,
+      "url": "http://cp.cloudflare.com/generate_204",
+      "interval": 300
+    }
+  }
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "@proxy",
+    "display_name": "🚀 节点选择",
+    "type": "select",
+    "proxies": [
+      "@auto",
+      "@region_hk",
+      "@region_jp",
+      "@region_us",
+      "@region_sg",
+      "@region_tw",
+      "DIRECT"
+    ]
+  },
+  {
+    "id": "@auto",
+    "display_name": "⚡️ 自动优选",
+    "type": "url-test",
+    "url": "http://cp.cloudflare.com/generate_204",
+    "interval": 300,
+    "tolerance": 50,
+    "empty-fallback": "REJECT",
+    "proxies": []
+  },
+  {
+    "id": "@ai",
+    "display_name": "🤖 AI 服务",
+    "type": "select",
+    "proxies": [
+      "@region_us",
+      "@region_jp",
+      "@region_sg",
+      "@proxy"
+    ]
+  },
+  {
+    "id": "@google",
+    "display_name": "🌐 谷歌服务",
+    "type": "select",
+    "proxies": [
+      "@ai",
+      "@region_us",
+      "@region_hk",
+      "@region_jp",
+      "@proxy"
+    ]
+  },
+  {
+    "id": "@media",
+    "display_name": "🎬 国际流媒体",
+    "type": "select",
+    "proxies": [
+      "@region_hk",
+      "@region_tw",
+      "@region_jp",
+      "@region_sg",
+      "@region_us",
+      "@proxy"
+    ]
+  }
+]

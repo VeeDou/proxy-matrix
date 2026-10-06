@@ -1,0 +1,66 @@
+{
+  "mode": "rule",
+  "ipv6": false,
+  "log-level": "info",
+  "tcp-concurrent": true,
+  "profile": {
+    "store-selected": true,
+    "store-fake-ip": true
+  },
+  "dns": {
+    "enable": true,
+    "ipv6": false,
+    "default-nameserver": [
+      "223.5.5.5",
+      "119.29.29.29"
+    ],
+    "enhanced-mode": "fake-ip",
+    "fake-ip-range": "198.18.0.1/16",
+    "use-hosts": true,
+    "nameserver": [
+      "https://dns.alidns.com/dns-query",
+      "https://doh.pub/dns-query"
+    ],
+    "fallback": [
+      "https://dns.cloudflare.com/dns-query",
+      "https://dns.google/dns-query"
+    ],
+    "fallback-filter": {
+      "geoip": true,
+      "geoip-code": "CN",
+      "ipcidr": [
+        "240.0.0.0/4"
+      ]
+    },
+    "nameserver-policy": {
+      "+.google.com": "https://1.1.1.1/dns-query#@google",
+      "+.googleapis.com": "https://1.1.1.1/dns-query#@google",
+      "+.googleapis.cn": "https://1.1.1.1/dns-query#@google",
+      "+.googlevideo.com": "https://1.1.1.1/dns-query#@google",
+      "+.gstatic.com": "https://1.1.1.1/dns-query#@google",
+      "+.gmail.com": "https://1.1.1.1/dns-query#@google",
+      "+.googlemail.com": "https://1.1.1.1/dns-query#@google",
+      "+.youtube.com": "https://1.1.1.1/dns-query#@google",
+      "+.youtu.be": "https://1.1.1.1/dns-query#@google",
+      "+.ytimg.com": "https://1.1.1.1/dns-query#@google",
+      "+.ggpht.com": "https://1.1.1.1/dns-query#@google",
+      "+.google": "https://1.1.1.1/dns-query#@google",
+      "+.goog": "https://1.1.1.1/dns-query#@google",
+      "+.google.dev": "https://1.1.1.1/dns-query#@google",
+      "+.googleusercontent.com": "https://1.1.1.1/dns-query#@google",
+      "+.openai.com": "https://dns.cloudflare.com/dns-query#@ai",
+      "+.chatgpt.com": "https://dns.cloudflare.com/dns-query#@ai",
+      "+.oaistatic.com": "https://dns.cloudflare.com/dns-query#@ai",
+      "+.oaiusercontent.com": "https://dns.cloudflare.com/dns-query#@ai",
+      "+.anthropic.com": "https://dns.cloudflare.com/dns-query#@ai",
+      "+.claude.ai": "https://dns.cloudflare.com/dns-query#@ai",
+      "+.perplexity.ai": "https://dns.cloudflare.com/dns-query#@ai",
+      "+.x.ai": "https://dns.cloudflare.com/dns-query#@ai",
+      "+.facebook.com": "https://dns.cloudflare.com/dns-query",
+      "+.twitter.com": "https://dns.cloudflare.com/dns-query",
+      "+.x.com": "https://dns.cloudflare.com/dns-query",
+      "+.github.com": "https://dns.cloudflare.com/dns-query",
+      "+.githubusercontent.com": "https://dns.cloudflare.com/dns-query"
+    }
+  }
+}

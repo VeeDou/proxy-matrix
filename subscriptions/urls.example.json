@@ -1,0 +1,4 @@
+{
+  "主力机场": "https://airport-a.example.com/api/v1/client/subscribe?token=EXAMPLE_TOKEN_AAA",
+  "备用机场": "https://airport-b.example.com/api/v1/client/subscribe?token=EXAMPLE_TOKEN_BBB"
+}

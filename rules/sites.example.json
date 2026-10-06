@@ -1,0 +1,10 @@
+[
+  {
+    "id": "sample-site",
+    "name": "示例自定义分流",
+    "domain": "example.com",
+    "type": "DOMAIN-SUFFIX",
+    "group": "@proxy",
+    "enabled": true
+  }
+]
