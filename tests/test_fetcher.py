@@ -168,7 +168,7 @@ class TestFetcher(unittest.TestCase):
                 self.assertNotIn("secret_hex_token_12345678", res["error"])
                 self.assertNotIn("secret_hex_token_12345678", res["url"])
                 self.assertIn("token=***", res["error"])
-                self.assertIn("token=***", res["url"])
+                self.assertEqual(res["url"], "https://sub.example.com/***")
 
 
 if __name__ == "__main__":

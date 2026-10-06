@@ -8,7 +8,7 @@ Zero third-party dependencies: 100% Python 3 standard library.
 from collections import Counter
 from pathlib import Path
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from proxymatrix.targets.clash import dict_to_yaml
 from proxymatrix.utils.yaml_parser import parse_clash_yaml_proxies
 

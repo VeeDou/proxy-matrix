@@ -40,6 +40,12 @@ class TestRedact(unittest.TestCase):
             self.assertNotIn("secret12345678901234567890", msg)
             self.assertIn("token=***", msg)
 
+    def test_redact_url(self):
+        from proxymatrix.utils.redact import redact_url
+        self.assertEqual(redact_url("https://airport.com/link/abcdef1234567890?clash=1"), "https://airport.com/***")  # leak-audit: allow
+        self.assertEqual(redact_url("https://sub.net/sub/a8098c1a-f86e-11da-bd1a-00112444be1e"), "https://sub.net/***")  # leak-audit: allow
+        self.assertEqual(redact_url("http://1.2.3.4:8080/s/1234567890abcdef1234567890abcdef"), "http://1.2.3.4:8080/***")  # leak-audit: allow
+
 
 if __name__ == "__main__":
     unittest.main()

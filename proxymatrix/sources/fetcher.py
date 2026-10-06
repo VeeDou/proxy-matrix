@@ -26,7 +26,7 @@ import urllib.parse
 import urllib.request
 
 from proxymatrix.targets.clash import dict_to_yaml
-from proxymatrix.utils.redact import redact_text, sanitize_exception
+from proxymatrix.utils.redact import redact_text, redact_url, sanitize_exception
 from proxymatrix.utils.validator import validate_subscription_entry
 from proxymatrix.utils.yaml_parser import parse_clash_yaml_proxies
 
@@ -446,15 +446,21 @@ def parse_ss_uri(uri: str) -> Optional[Dict[str, Any]]:
     except ValueError:
         return None
 
-    return {
+    node: Dict[str, Any] = {
         "name": name,
         "type": "ss",
-        "server": server,
+        "server": urllib.parse.unquote(server),
         "port": port,
         "cipher": method,
-        "password": password,
+        "password": urllib.parse.unquote(password),
         "udp": True,
     }
+    if parsed.query:
+        q = urllib.parse.parse_qs(parsed.query)
+        if "plugin" in q:
+            node["plugin"] = q["plugin"][0].split(";")[0]
+
+    return node
 
 
 def parse_vmess_uri(uri: str) -> Optional[Dict[str, Any]]:
@@ -485,23 +491,32 @@ def parse_vmess_uri(uri: str) -> Optional[Dict[str, Any]]:
     node: Dict[str, Any] = {
         "name": name,
         "type": "vmess",
-        "server": server,
+        "server": urllib.parse.unquote(server),
         "port": port,
-        "uuid": uuid,
+        "uuid": urllib.parse.unquote(uuid),
         "alterId": alter_id,
         "cipher": "auto",
         "tls": tls,
         "udp": True,
     }
+    if data.get("alpn"):
+        node["alpn"] = [x.strip() for x in str(data["alpn"]).split(",") if x.strip()]
+    if data.get("fp"):
+        node["client-fingerprint"] = str(data["fp"])
+
     if net == "ws":
         node["network"] = "ws"
         ws_opts: Dict[str, Any] = {}
         if data.get("path"):
-            ws_opts["path"] = str(data["path"])
+            ws_opts["path"] = urllib.parse.unquote(str(data["path"]))
         if data.get("host"):
             ws_opts["headers"] = {"Host": str(data["host"])}
         if ws_opts:
             node["ws-opts"] = ws_opts
+    elif net == "grpc":
+        node["network"] = "grpc"
+        if data.get("path"):
+            node["grpc-opts"] = {"grpc-service-name": urllib.parse.unquote(str(data["path"]))}
     elif net:
         node["network"] = net
 
@@ -520,15 +535,29 @@ def parse_trojan_uri(uri: str) -> Optional[Dict[str, Any]]:
     query = urllib.parse.parse_qs(parsed.query)
     sni = query.get("sni", [query.get("peer", [server])[0]])[0]
 
-    return {
+    node: Dict[str, Any] = {
         "name": name,
         "type": "trojan",
-        "server": server,
+        "server": urllib.parse.unquote(server),
         "port": port,
-        "password": password,
+        "password": urllib.parse.unquote(password),
         "sni": sni,
         "udp": True,
     }
+    if query.get("alpn"):
+        node["alpn"] = [x.strip() for x in query["alpn"][0].split(",") if x.strip()]
+    network_type = query.get("type", ["tcp"])[0].lower()
+    if network_type == "ws":
+        node["network"] = "ws"
+        node["ws-opts"] = {
+            "path": urllib.parse.unquote(query.get("path", ["/"])[0]),
+            "headers": {"Host": query.get("host", [sni])[0]}
+        }
+    elif network_type == "grpc":
+        node["network"] = "grpc"
+        node["grpc-opts"] = {"grpc-service-name": urllib.parse.unquote(query.get("serviceName", [""])[0])}
+
+    return node
 
 
 def parse_vless_uri(uri: str) -> Optional[Dict[str, Any]]:
@@ -547,14 +576,30 @@ def parse_vless_uri(uri: str) -> Optional[Dict[str, Any]]:
     node: Dict[str, Any] = {
         "name": name,
         "type": "vless",
-        "server": server,
+        "server": urllib.parse.unquote(server),
         "port": port,
-        "uuid": uuid,
+        "uuid": urllib.parse.unquote(uuid),
         "tls": security in ("tls", "reality"),
         "udp": True,
     }
     if query.get("flow"):
         node["flow"] = query["flow"][0]
+    if query.get("fp"):
+        node["client-fingerprint"] = query["fp"][0]
+    if query.get("alpn"):
+        node["alpn"] = [x.strip() for x in query["alpn"][0].split(",") if x.strip()]
+
+    network_type = query.get("type", ["tcp"])[0].lower()
+    if network_type == "ws":
+        node["network"] = "ws"
+        node["ws-opts"] = {
+            "path": urllib.parse.unquote(query.get("path", ["/"])[0]),
+            "headers": {"Host": query.get("host", [sni])[0]}
+        }
+    elif network_type == "grpc":
+        node["network"] = "grpc"
+        node["grpc-opts"] = {"grpc-service-name": urllib.parse.unquote(query.get("serviceName", [""])[0])}
+
     if security == "reality":
         reality_opts: Dict[str, Any] = {"public-key": query.get("pbk", [""])[0]}
         if query.get("sid"):
@@ -579,14 +624,24 @@ def parse_hysteria2_uri(uri: str) -> Optional[Dict[str, Any]]:
     query = urllib.parse.parse_qs(parsed.query)
     sni = query.get("sni", [server])[0]
 
-    return {
+    node: Dict[str, Any] = {
         "name": name,
         "type": "hysteria2",
-        "server": server,
+        "server": urllib.parse.unquote(server),
         "port": port,
-        "password": password,
+        "password": urllib.parse.unquote(password),
         "sni": sni,
     }
+    if query.get("alpn"):
+        node["alpn"] = [x.strip() for x in query["alpn"][0].split(",") if x.strip()]
+    if query.get("obfs"):
+        node["obfs"] = query["obfs"][0]
+    if query.get("obfs-password"):
+        node["obfs-password"] = urllib.parse.unquote(query["obfs-password"][0])
+    if query.get("insecure", ["0"])[0].lower() in ("1", "true"):
+        node["skip-cert-verify"] = True
+
+    return node
 
 
 def parse_proxy_uri(uri: str) -> Optional[Dict[str, Any]]:
@@ -677,9 +732,9 @@ def save_profile_yaml(profile_path: Path, proxies: List[Dict[str, Any]], provide
 def fetch_subscription(name: str, url: str, profiles_dir: Path, timeout: int = 20) -> Dict[str, Any]:
     """Download subscription, parse nodes, and atomically save to profiles/<name>.yaml (0600).
 
-    All error messages and subscription URLs are sanitized with redact_text to prevent token leaks.
+    All error messages and subscription URLs are sanitized with redact_url to prevent token leaks.
     """
-    safe_url = redact_text(url)
+    safe_url = redact_url(url)
     try:
         validate_subscription_entry(name, url)
     except Exception as e:
@@ -694,7 +749,7 @@ def fetch_subscription(name: str, url: str, profiles_dir: Path, timeout: int = 2
     req = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "ClashVerge/1.7.0 (Mihomo; +https://github.com/VeeDou/proxy-matrix)",
+            "User-Agent": "ClashVerge/1.7.7 (Mihomo; clash.meta)",
             "Accept": "*/*",
         }
     )
@@ -782,7 +837,7 @@ def fetch_all_subscriptions(
 
 def test_subscription_url(url: str, proxy_mixed_port: Optional[int] = None) -> Dict[str, Any]:
     """Download subscription content safely with size limits and validate proxy nodes."""
-    safe_url = redact_text(url)
+    safe_url = redact_url(url)
     proxies = {}
     if proxy_mixed_port:
         proxies = {
@@ -792,7 +847,7 @@ def test_subscription_url(url: str, proxy_mixed_port: Optional[int] = None) -> D
     opener = urllib.request.build_opener(urllib.request.ProxyHandler(proxies))
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": "ClashVerge/1.7.0 (Mihomo; +https://github.com/VeeDou/proxy-matrix)"}
+        headers={"User-Agent": "ClashVerge/1.7.7 (Mihomo; clash.meta)"}
     )
     try:
         with opener.open(req, timeout=20) as response:

@@ -121,8 +121,8 @@ def compile_shadowrocket_conf(
         report.policy_notes = [
             "UDP 旁路防泄露: udp-policy-not-supported-behaviour = REJECT (防止非代理 UDP 直连泄露客户端真实 IP)。",
             "QUIC 强制拦截: AND,((PROTOCOL,UDP),(DEST-PORT,443)),REJECT (强制 HTTP/3 回退至 TCP TLS，提升分流稳定性)。",
-            "内网绕行兜底: GEOSITE,private 虽未作为单条规则注入，但已在 skip-proxy 与 tun-excluded-routes 全量覆盖。",
-            "国内流量兜底: GEOSITE,cn 丢弃后，由 GEOIP,CN,DIRECT,no-resolve 规则全量兜底。",
+            "内网绕行与私有网段展开: GEOSITE,private 虽丢弃，但已由 skip-proxy、tun-excluded-routes 及自动展开的私有 IP-CIDR 段全量承接。",
+            "国内流量防境外代理泄露: GEOSITE,cn 虽被丢弃，但已由 DOMAIN-SUFFIX,cn 及移除 no-resolve 启用本地 DNS 解析的 GEOIP,CN 规则联合承接，确保淘宝、京东等国内流量直连，避免误入海外代理。",
             "策略组类型转换: Clash url-test 自动选优在 Shadowrocket 中编译为带正则过滤的 select 策略组。",
         ]
 
@@ -204,6 +204,18 @@ def compile_shadowrocket_conf(
                             "converted": sr_rule.replace("\n", " / "),
                             "reason": "Shadowrocket 不支持 GEOSITE 标签；展开为明确的 DOMAIN-SUFFIX 规则",
                         })
+                    elif rule.type == "GEOIP" and rule.payload.upper() == "PRIVATE":
+                        report.converted_rules.append({
+                            "original": r_str,
+                            "converted": "IP-CIDR,10.0.0.0/8,... (展开为多段私有 CIDR)",
+                            "reason": "Shadowrocket 不支持 GEOIP,private；自动展开为 RFC 1918 与本地私有 IPv4/IPv6 CIDR 段",
+                        })
+                    elif rule.type == "GEOIP" and rule.payload.upper() == "CN":
+                        report.converted_rules.append({
+                            "original": r_str,
+                            "converted": "DOMAIN-SUFFIX,cn,DIRECT / GEOIP,CN,DIRECT",
+                            "reason": "追加 DOMAIN-SUFFIX,cn 并移除 no-resolve 启用本地 DNS 解析，防止国内域名回退至海外代理",
+                        })
                     elif r_str.startswith("MATCH,") or r_str.startswith("FINAL,"):
                         report.converted_rules.append({
                             "original": r_str,
@@ -215,9 +227,9 @@ def compile_shadowrocket_conf(
                     reason = f"Shadowrocket 不支持 {rule.type} 规则；已丢弃"
                     if rule.type == "GEOSITE":
                         if rule.payload == "private":
-                            reason = "Shadowrocket 不支持私有 GEOSITE 标签；已在 skip-proxy 与 tun-excluded-routes 内网绕行中全量兜底"
+                            reason = "Shadowrocket 不支持私有 GEOSITE 标签；已在 skip-proxy 与展开后的私有 IP-CIDR 规则中全量兜底"
                         elif rule.payload == "cn":
-                            reason = "Shadowrocket 不支持 GEOSITE 标签；国内流量已由 GEOIP,CN 规则接管"
+                            reason = "Shadowrocket 不支持 GEOSITE 标签；国内流量已由 DOMAIN-SUFFIX,cn 与本地解析后的 GEOIP,CN 联合接管"
                         else:
                             reason = f"Shadowrocket 不支持 GEOSITE,{rule.payload} 标签；已丢弃"
                     report.dropped_rules.append({

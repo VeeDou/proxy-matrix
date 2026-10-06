@@ -103,6 +103,26 @@ class Rule:
                 return f"DOMAIN-SUFFIX,google.com,{target_name}\nDOMAIN-SUFFIX,googleapis.com,{target_name}"
             # Shadowrocket does not natively support GEOSITE tags; drop gracefully
             return None
+        if self.type == "GEOIP":
+            payload_upper = self.payload.upper()
+            if payload_upper == "PRIVATE":
+                # Shadowrocket does not support GEOIP,private; expand to RFC 1918 / loopback CIDRs
+                return (
+                    f"IP-CIDR,127.0.0.0/8,{target_name},no-resolve\n"
+                    f"IP-CIDR,172.16.0.0/12,{target_name},no-resolve\n"
+                    f"IP-CIDR,192.168.0.0/16,{target_name},no-resolve\n"
+                    f"IP-CIDR,10.0.0.0/8,{target_name},no-resolve\n"
+                    f"IP-CIDR,100.64.0.0/10,{target_name},no-resolve\n"
+                    f"IP-CIDR6,fc00::/7,{target_name},no-resolve\n"
+                    f"IP-CIDR6,fe80::/10,{target_name},no-resolve\n"
+                    f"IP-CIDR6,::1/128,{target_name},no-resolve"
+                )
+            if payload_upper == "CN":
+                # Crucial domestic routing fix (Decision M3):
+                # 1. Direct-route all .cn top-level domains.
+                # 2. Drop no-resolve for GEOIP,CN in Shadowrocket so unlisted domestic domains
+                #    are resolved by local domestic DNS (223.5.5.5) and matched to DIRECT instead of leaking to PROXY.
+                return f"DOMAIN-SUFFIX,cn,{target_name}\nGEOIP,CN,{target_name}"
 
         parts = [self.type, self.payload, target_name]
         if self.no_resolve:

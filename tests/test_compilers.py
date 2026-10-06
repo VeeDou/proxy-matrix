@@ -86,6 +86,15 @@ class TestCompilers(unittest.TestCase):
         # 6. Zero unresolved @ residue in Shadowrocket rules
         self.assertNotIn("@", conf_text, "All logical IDs must be fully resolved with no '@' remaining!")
 
+        # 7. Domestic and private routing rules (B2 verification)
+        self.assertIn("DOMAIN-SUFFIX,cn,DIRECT", conf_text, "Must have DOMAIN-SUFFIX,cn,DIRECT for domestic sites")
+        self.assertIn("GEOIP,CN,DIRECT", conf_text, "Must have GEOIP,CN,DIRECT")
+        self.assertNotIn("GEOIP,CN,DIRECT,no-resolve", conf_text, "GEOIP,CN must NOT have no-resolve (must resolve unlisted domains)")
+        self.assertNotIn("GEOIP,private", conf_text, "GEOIP,private must be expanded into concrete CIDRs")
+        self.assertIn("IP-CIDR,10.0.0.0/8,DIRECT,no-resolve", conf_text)
+        self.assertIn("IP-CIDR,172.16.0.0/12,DIRECT,no-resolve", conf_text)
+        self.assertIn("IP-CIDR,192.168.0.0/16,DIRECT,no-resolve", conf_text)
+
     def test_shadowrocket_yaml_compiler_output(self):
         """Verify Shadowrocket proxies YAML output properly formats and disambiguates nodes."""
         # 1. Configured URLs without cache raises FileNotFoundError unless fallback explicitly requested

@@ -41,9 +41,11 @@ class TestLossyReport(unittest.TestCase):
         # 2. Verify disabled custom site is recorded as dropped
         self.assertIn("DOMAIN-SUFFIX,custom-disabled.com", dropped_rule_names)
 
-        # 3. Verify GEOSITE,google and MATCH,@proxy are recorded in converted_rules
+        # 3. Verify GEOSITE,google, GEOIP private, GEOIP CN, and MATCH,@proxy are recorded in converted_rules
         converted_rule_names = [c["original"] for c in report.converted_rules]
         self.assertIn("GEOSITE,google,@google", converted_rule_names)
+        self.assertIn("GEOIP,private,DIRECT,no-resolve", converted_rule_names)
+        self.assertIn("GEOIP,CN,DIRECT,no-resolve", converted_rule_names)
         self.assertIn("MATCH,@proxy", converted_rule_names)
 
         # 4. Verify Markdown report output
@@ -53,6 +55,8 @@ class TestLossyReport(unittest.TestCase):
         self.assertIn("GEOSITE,cn,DIRECT", md_text)
         self.assertIn("GEOSITE,google,@google", md_text)
         self.assertIn("MATCH,@proxy", md_text)
+        self.assertIn("DOMAIN-SUFFIX,cn", md_text)
+        self.assertIn("国内流量防境外代理泄露", md_text)
         self.assertIn("udp-policy-not-supported-behaviour = REJECT", md_text)
 
 

@@ -26,6 +26,23 @@ def redact_text(text: str) -> str:
     return text
 
 
+import urllib.parse
+
+
+def redact_url(url: str) -> str:
+    """Mask sensitive path tokens and parameters in subscription URLs, preserving only scheme and host."""
+    if not isinstance(url, str):
+        url = str(url)
+    clean = url.strip()
+    try:
+        parts = urllib.parse.urlsplit(clean)
+        if parts.scheme and parts.netloc:
+            return f"{parts.scheme}://{parts.netloc}/***"
+        return redact_text(clean)
+    except Exception:
+        return "***"
+
+
 def sanitize_exception(e: BaseException) -> str:
     """Format and redact an exception message safely."""
     return redact_text(f"{type(e).__name__}: {e}")
