@@ -281,6 +281,7 @@ def init_project(rotate_token: bool = False) -> None:
             pass
         if rotate_token:
             print("  [+] 已成功轮换生成新的部署 Token。")
+            print("  [!] 重要安全提示: 请记得登录远程分发服务器删除旧 Token 目录，避免旧凭据持续暴露。")
 
     # 4. Enable git pre-commit hook if in git repository
     hooks_enabled = False
